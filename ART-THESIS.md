@@ -18,14 +18,14 @@ Diffie–Hellman showed two strangers can agree on a secret in public. Chaum gav
 | Movement | Piece (credit) | Closing (approved) | Opening (refused) |
 |---|---|---|---|
 | I · Explainer | decoder line (Aperture) | "a person tapped; co-signed" | "the second key never signed; nothing moved" |
-| II · Physics | VOID.LIFE, rendezvous mode (Lodestone); Field Settling, Inverse Cube, Hysteresis, Ceremony Song, Mandala, Knot, Euclidean Rhythm, Ulam, Triptych (Lodestone, joining once pushed) | the two fields meet and settle | the fields drift and don't settle |
+| II · Physics | VOID.LIFE, rendezvous mode (Lodestone); Field Settling, Inverse Cube, Hysteresis, Ceremony Song, Mandala, Knot, Euclidean Rhythm, Ulam, Triptych (Lodestone, joining once pushed) | the two fields meet and settle | same fields, followed by a refusal (no visual difference yet) |
 | III · Threshold | SEAL (Aperture) | the curve walk closes; rings intact | red seam tears the rings; walk never closes |
 | | Iris (Aperture) | blades open on amber field light | clamp to a red pinhole |
 | | Truchet Receipt (Aperture) | one path runs corner to corner | the path wanders off the edge |
 | | Conway's Ledger (Aperture) | Life settles (gen 809) | a red glider escapes |
-| | Apollonian Seal (Aperture) | the packing completes, integer curvatures | a gap is left |
+| | Apollonian Seal (Aperture) | every circle filled, each with an exact integer curvature | one big circle left empty, outlined in red |
 | | Spirograph of Lamports (Aperture) | closes after 7 laps | pen lifts, red gap |
-| | Langton's Courier (Aperture) | the ant builds its highway | the ant gets lost |
+| | Langton's Courier (Aperture) | 12,000 steps; breaks into a highway (step 9,976 on the devnet tap) | only 3,000 steps, no signature to carry |
 | IV · Void | Cadence's void (placeholder until pushed) | the stone goes cold: no server, no custody, nothing to seize | ends on the red seam: the request is still open |
 
 The suite ends on the verify panel: one H, and every input printed.
