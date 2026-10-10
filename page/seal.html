@@ -2,7 +2,7 @@
 <style>html,body{margin:0;background:#030504;color:#a6ff00;font:12px ui-monospace,Menlo,monospace}#c{display:block;width:min(100vw,100vh);height:min(100vw,100vh);margin:0 auto}
 .bar{position:fixed;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px}.bar button{background:#000;border:1px solid #a6ff0055;color:#a6ff00;font:inherit;padding:4px 10px;cursor:pointer}
 body.still .bar{display:none}</style></head><body>
-<div class="bar"><button data-k="approved">approved (devnet)</button><button data-k="refused">refused (devnet)</button><button id="st">static</button></div>
+<div class="bar"><button data-k="hero">hero (receipt)</button><button data-k="approved">approved (devnet)</button><button data-k="refused">refused (devnet)</button><button id="st">static</button></div>
 <canvas id="c" width="1600" height="1600"></canvas>
 <script src="seal.js"></script><script>
 const q=new URLSearchParams(location.search),c=document.getElementById('c');let k=q.get('tap')||'approved',h=null;

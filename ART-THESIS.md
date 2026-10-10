@@ -13,6 +13,18 @@
 - **Devnet digest (public, no demo key):** `digest = SHA-256(sig_bytes(64) | u64le(slot) | u64le(blockTime) | u64le(fee))`. Slot, blockTime and fee come from `getTransaction` / the explorer.
 - SEAL's curve is a toy curve over F₁₀₂₁ drawn for the eye, not Ed25519. SEAL's kick ring is a **kick schedule derived from the digest (nonce not logged)** — same algorithm as `stone/bump.js scheduleFromNonce`, but the live tap nonce was never recorded. Liveness, not distance.
 
+## The signature is the event; the receipt is the vow.
+
+*Line by Cadence.* When a tx carries a TAP receipt memo (`TAP1:` + sha256(`"TAP1|"` + canon(intent))), the art has two layers:
+
+- **Core (the vow):** SEAL's SHA-256 tapestry and curve walk, and VOID.LIFE's seed (through the suite's outcome wrapper; `art.js` untouched), come only from the receipt hex. `H = SHA-256("TAP-SEAL-core-v2" | receipt32 | ok)`. Same intent, same core, however many times it is signed.
+- **Event (the event):** the hex border ring, the kick ring and the reveal timing come from the tx signature. `E = SHA-256("TAP-SEAL-event-v2" | sig64 | ok)`.
+- Txs without a memo keep the v1 public-digest formula.
+
+Anyone can recompute the receipt: `node vault/verify-receipt.js <sig>`, or the "recompute" button in `page/suite.html` (`page/verify-receipt-browser.js`), which fetches the tx from devnet RPC, rebuilds the intent from what executed, and compares it to the memo. Hero: `rJRY77eU…` → `TAP1:512900a7…6f59`.
+
+**Scope:** the receipt proves the phone signed this intent, not that a human was at the stone.
+
 ## Lineage
 Diffie–Hellman showed two strangers can agree on a secret in public. Chaum gave us receipts you can check without trusting who issued them. The cypherpunk rule that follows is *verify, don't trust*. TAP's art is a small, visual version of that rule. It adds no security of its own.
 

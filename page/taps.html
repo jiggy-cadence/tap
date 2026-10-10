@@ -66,6 +66,14 @@ footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:18px;font-si
 <script>
 const TAPS=[
  {
+  "digest": "24eabad60c5fb66c691ec9e55172f4bc4c64d98e5a6e1dd6df1ffbf4ee5460d5",
+  "outcome": "approved", "amount": "5 test tokens", "time": "2026-10-10T16:19",
+  "label": "HERO · receipt-bound co-sign (TAP1 memo)", "how": "devnet", "hero": true,
+  "receipt": "TAP1:512900a78fba9a950e599ead1dcdbbda5b703ba0ad8ac9ceed0db521c9c16f59",
+  "sig": "rJRY77eUMuy4bPkZ8sWhRQBqDDfokhsUyhuE14CBHeTZz87WiYehvGg7FkavguYUDdkHD7gKMyJaBXyXNRtfALT", "pubkey": "5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY", "lamports": 10000, "ts": 1791667194, "slot": 509673782, "fee": 10000,
+  "note": "real devnet tx · core art from the receipt (the vow), border/kicks from the sig (the event) · vault/verify-receipt.js ✓"
+ },
+ {
   "digest": "5372e151bf9c03ccc1693fbc939c37908465ee0e5815f8cf06a94f4edfc1f7fd",
   "outcome": "approved",
   "amount": "0.05 SOL",
@@ -220,18 +228,18 @@ const short=h=>h.slice(0,8)+'…'+h.slice(-6);
 const grid=document.getElementById('grid');
 function card(t){const ref=t.outcome==='refused';const el=document.createElement('div');el.className='card'+(ref?' refused':'');
  const c=document.createElement('canvas');c.width=c.height=500;el.appendChild(c);
- if(t.sig){const g=document.createElement('span');g.className='tag';g.textContent='devnet · real';el.appendChild(g)}
+ if(t.sig){const g=document.createElement('span');g.className='tag';g.textContent=t.hero?'hero · receipt ✓':'devnet · real';if(t.hero)el.style.outline='1px solid #a6ff00';el.appendChild(g)}
  const ex=t.sig?`<div class="src"><a href="https://explorer.solana.com/tx/${t.sig}?cluster=devnet" target="_blank" rel="noopener" onclick="event.stopPropagation()">explorer ↗ ${t.sig.slice(0,10)}…</a></div>`:'';
  el.insertAdjacentHTML('beforeend',`<div class="meta"><div class="row"><span class="oc"><span class="dot"></span>${ref?'refused':'approved'}</span><span>${t.amount||''}</span></div><div class="ttl">${(t.label||'tap').replace(/</g,'&lt;')}</div><div class="row dg"><span>${short(t.digest)}</span><span>${fmt(t.time)}</span></div><div class="src">${t.note||'live tap'}<br>same hash, same art</div>${ex}</div>`);
- draw(c.getContext('2d'),500,t.digest,ref);el.onclick=()=>openBig(t);grid.appendChild(el);document.getElementById('cnt').textContent='· '+grid.children.length}
+ draw(c.getContext('2d'),500,t.receipt?t.receipt.slice(5):t.digest,ref);el.onclick=()=>openBig(t);grid.appendChild(el);document.getElementById('cnt').textContent='· '+grid.children.length}
 window.addTap=async function(t){if(typeof t==='string')t=JSON.parse(t);t={...t,digest:await toHex(String(t.digest||''))};t.outcome=t.outcome==='refused'?'refused':'approved';card(t);return t.digest};
 TAPS.forEach(card);
 const big=document.getElementById('big'),bc=document.getElementById('bc'),bx=bc.getContext('2d');let raf=0;
 function openBig(t){big.classList.add('on');const ref=t.outcome==='refused';document.getElementById('bcap').textContent=`${ref?'REFUSED':'APPROVED'} · ${t.label||''} · ${t.amount||''} · ${t.digest}`;
- const t0=performance.now();cancelAnimationFrame(raf);startSL(t);startVL(t);const loop=now=>{const p=Math.min(1,(now-t0)/3200);draw(bx,1400,t.digest,ref,p,now);raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+ const t0=performance.now();cancelAnimationFrame(raf);startSL(t);startVL(t);const loop=now=>{const p=Math.min(1,(now-t0)/3200);draw(bx,1400,t.receipt?t.receipt.slice(5):t.digest,ref,p,now);raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
 let vlH=null;const vlc=document.getElementById('vlc');
 // VOID.LIFE by Lodestone: approved taps only, seeded by the tap (tx sig if real, else digest). Fail-open: display only.
-function startVL(t){stopVL();if(t.outcome==='refused'||!window.KnotArt)return;try{vlH=KnotArt.renderAnimated(document.getElementById('vl'),t.sig||t.digest,{w:720,h:720});big.classList.add('vl');setCred()}catch(e){console.error('VOID.LIFE',e);stopVL()}}
+function startVL(t){stopVL();if(t.outcome==='refused'||!window.KnotArt)return;try{vlH=KnotArt.renderAnimated(document.getElementById('vl'),t.receipt?t.receipt.slice(5):(t.sig||t.digest),{w:720,h:720});big.classList.add('vl');setCred()}catch(e){console.error('VOID.LIFE',e);stopVL()}}
 // SEAL by Aperture: needs a real signature + pubkey (devnet cards, or app taps that pass sig/pubkey/lamports/ts). Fail-open.
 let slH=null;function startSL(t){stopSL();if(!window.SEAL||!t.sig||!t.pubkey)return;try{slH=SEAL.animate(document.getElementById('sl'),{...t,net:t.how==='devnet'?'devnet':''});big.classList.add('seal');setCred()}catch(e){console.error('SEAL',e);stopSL()}}
 function stopSL(){try{slH&&slH.stop()}catch(e){}slH=null;big.classList.remove('seal');setCred()}

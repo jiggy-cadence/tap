@@ -91,11 +91,19 @@ function kickSchedule(nonce, o = { kicks: 6, minGapMs: 200, maxGapMs: 700 }) {
 function model(tap) {
   const digest = bytesOf(tap.digest, 32), sig = bytesOf(tap.sig, 64), pub = bytesOf(tap.pubkey, 32);
   const lamports = BigInt(tap.lamports || 0), ts = BigInt(tap.ts || 0), refused = tap.outcome !== 'approved' && tap.outcome !== 'unanswered', unanswered = tap.outcome === 'unanswered', ob = refused ? 0 : unanswered ? 2 : 1;
-  const nonceSrc = tap.nonce != null ? 'given' : 'digest[0..3] (nonce not logged)';
-  const nonce = tap.nonce != null ? tap.nonce >>> 0 : ((digest[0] << 24 | digest[1] << 16 | digest[2] << 8 | digest[3]) >>> 0);
-  const input = cat(utf8('TAP-SEAL-v1'), digest, sig, pub, u64le(lamports), u64le(ts), Uint8Array.of(ob));
+  // Two layers (v2, when the tx carries a TAP receipt memo):
+  //   CORE  = the vow   : tapestry + curve walk seeded ONLY from the receipt hex (+ outcome byte). Same receipt -> same core.
+  //   EVENT = the event : hex border, kick ring, reveal timing seeded from the tx signature.
+  // No receipt -> v1 public-digest formula (fallback, unchanged).
+  const rcpt = tap.receipt ? unhex(String(tap.receipt).replace(/^TAP1:/, '')) : null;
+  if (rcpt && rcpt.length !== 32) throw new Error('receipt must be 32 bytes hex');
+  const input = rcpt ? cat(utf8('TAP-SEAL-core-v2'), rcpt, Uint8Array.of(ob)) : cat(utf8('TAP-SEAL-v1'), digest, sig, pub, u64le(lamports), u64le(ts), Uint8Array.of(ob));
   const tr = {}; const H = sha256(input, tr);
-  const C = curve(digest); const ks = Array.from(sig.slice(0, 16), b => b || 1);
+  const evInput = rcpt ? cat(utf8('TAP-SEAL-event-v2'), sig, Uint8Array.of(ob)) : null, E = evInput ? sha256(evInput) : null;
+  const nonceSrc = tap.nonce != null ? 'given' : rcpt ? 'E[0..3] (event hash of the tx sig)' : 'digest[0..3] (nonce not logged)';
+  const nonce = tap.nonce != null ? tap.nonce >>> 0 : rcpt ? ((E[0] << 24 | E[1] << 16 | E[2] << 8 | E[3]) >>> 0) : ((digest[0] << 24 | digest[1] << 16 | digest[2] << 8 | digest[3]) >>> 0);
+  const C = curve(rcpt ? H : digest); const ks = Array.from(rcpt ? sha256(cat(utf8('TAP-SEAL-walk-v2'), rcpt)).slice(0, 16) : sig.slice(0, 16), b => b || 1);
+  const revealMs = rcpt ? 2400 + Math.round(E[4] / 255 * 1600) : 3000;
   const walk = [C.G]; let Q = C.G, S = 0; for (const k of ks) { Q = C.add(Q, C.mul(k, C.G)); S += k; walk.push(Q); }
   const close = (C.ord - (S % C.ord)) % C.ord; const closed = (refused || unanswered) ? null : C.add(Q, C.mul(close, C.G));
   const D = dipoles(pub), lines = [];
@@ -103,7 +111,7 @@ function model(tap) {
   const kicks = kickSchedule(nonce);
   return { tap: { label: tap.label || '', outcome: refused ? 'refused' : unanswered ? 'unanswered' : 'approved', net: tap.net || '' }, refused, unanswered, outcomeByte: ob,
     digestHex: hex(digest), sigHex: hex(sig), pubHex: hex(pub), lamports: lamports.toString(), ts: ts.toString(), nonce, nonceSrc,
-    inputHex: hex(input), H: hex(H), blocks: tr.blocks, rounds: tr.rounds,
+    inputHex: hex(input), H: hex(H), layered: !!rcpt, receiptHex: rcpt ? hex(rcpt) : null, core: hex(H), E: E ? hex(E) : null, evInputHex: evInput ? hex(evInput) : null, revealMs, blocks: tr.blocks, rounds: tr.rounds,
     curve: { p: C.p, a: C.a, b: C.b, n: C.pts.length + 1, G: C.G, ord: C.ord, pts: C.pts, ks, S, close, walk, closed },
     dipoles: D, lines, kicks, tearAt: H[0] / 256 };
 }
@@ -167,7 +175,7 @@ function render(ctx, M, W, p = 1) {
   const ring = (str, r, size, col, frac) => { ctx.font = `${size}px ui-monospace,Menlo,monospace`; ctx.fillStyle = col; ctx.textAlign = 'center'; const n = Math.floor(str.length * frac);
     for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + 2 * Math.PI * (i + .5) / str.length; ctx.save(); ctx.translate(cx + r * Math.cos(a), cy + r * Math.sin(a)); ctx.rotate(a + Math.PI / 2); ctx.fillText(str[i], 0, 0); ctx.restore(); } };
   ring(M.sigHex, 712 * s, 13.5 * s, ref ? 'rgba(255,120,110,.85)' : 'rgba(166,255,0,.85)', seg(p, .1, .8));
-  ring(M.digestHex, 412 * s, 12 * s, 'rgba(0,255,166,.6)', seg(p, .2, .8));
+  ring(M.layered ? M.receiptHex : M.digestHex, 412 * s, 12 * s, 'rgba(0,255,166,.6)', seg(p, .2, .8));
   // labels + verify panel
   ctx.textAlign = 'left'; ctx.font = `${13 * s}px ui-monospace,Menlo,monospace`; ctx.fillStyle = COL.g;
   ctx.fillText('SEAL // TAP', 48 * s, 60 * s); ctx.fillStyle = ACC; ctx.fillText(M.tap.outcome.toUpperCase() + (M.tap.net ? ' · ' + M.tap.net : ''), 48 * s, 82 * s);
@@ -178,7 +186,7 @@ function render(ctx, M, W, p = 1) {
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(36 * s, y0 - 20 * s, 560 * s, (16 * V.length + 26) * s); ctx.strokeStyle = 'rgba(166,255,0,.3)'; ctx.strokeRect(36 * s, y0 - 20 * s, 560 * s, (16 * V.length + 26) * s);
     V.forEach((l, i) => { ctx.fillStyle = i === 0 ? COL.g : i === V.length - 1 ? ACC : 'rgba(216,245,200,.7)'; ctx.fillText(l, 48 * s, y0 + 16 * i * s); }); }
   ctx.textAlign = 'right'; ctx.font = `${10 * s}px ui-monospace,Menlo,monospace`; ctx.fillStyle = 'rgba(216,245,200,.35)';
-  ['SEAL by Aperture · rings: SHA-256 rounds 0→63 outward', 'stars: toy curve · lines: RK4 dipoles (pubkey)', 'pulses: kick schedule derived from the digest (nonce not logged) · outer text: signature hex'].forEach((l, i) => ctx.fillText(l, W - 48 * s, W - (76 - 16 * i) * s));
+  ['SEAL by Aperture · rings: SHA-256 rounds 0→63 outward', 'stars: toy curve · lines: RK4 dipoles (pubkey)', M.layered ? 'core (rings, stars): receipt TAP1 · event (pulses, outer hex): tx signature' : 'pulses: kick schedule derived from the digest (nonce not logged) · outer text: signature hex'].forEach((l, i) => ctx.fillText(l, W - 48 * s, W - (76 - 16 * i) * s));
   if (una) { ctx.save(); try { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, W); } catch (e) {} ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.2 + 0.55 * p; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, W); ctx.restore(); }
   // CRT: bloom + scanlines
   try { if (ctx.filter !== undefined && ctx.canvas) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .35; ctx.filter = `blur(${7 * s}px)`; ctx.drawImage(ctx.canvas, 0, 0); ctx.restore(); } } catch (e) {}
@@ -186,6 +194,12 @@ function render(ctx, M, W, p = 1) {
   ctx.restore();
 }
 function verifyLines(M) { const sh = h => h.slice(0, 20) + '…' + h.slice(-8);
+  if (M.layered) return ['VERIFY YOURSELF  two layers', 'CORE (the vow)  H = sha256("TAP-SEAL-core-v2" | receipt32 | ok)  → tapestry + curve walk',
+    `receipt  TAP1:${M.receiptHex}`, `         = sha256("TAP1|" + canon(intent))  · intent rebuilt from the executed tx (vault/verify-receipt.js)`,
+    `walk k_i = sha256("TAP-SEAL-walk-v2" | receipt32)[0..15]`, `ok byte  ${M.outcomeByte}  (approved=1, refused=0, unanswered=2)`,
+    'EVENT (the event)  E = sha256("TAP-SEAL-event-v2" | sig64 | ok)  → hex border, kick ring, reveal timing',
+    `sig      ${sh(M.sigHex)}`, `E        ${M.E}`, `kicks    ${M.kicks.join(' ')} ms  · nonce ${M.nonce} (${M.nonceSrc})`, `reveal   ${M.revealMs} ms = 2400 + E[4]/255·1600`,
+    'Scope: the receipt proves the phone signed this intent, not that a human was at the stone.', `H (core) ${M.H}`];
   const lines = ['VERIFY YOURSELF  H = sha256(input)', `"TAP-SEAL-v1" | digest | sig | pubkey | u64le lam | u64le ts | ok`,
     `ok byte  ${M.outcomeByte}  (approved=1, refused=0, unanswered=2)`,
     `digest   ${sh(M.digestHex)}`, `sig      ${sh(M.sigHex)}`, `pubkey   ${sh(M.pubHex)}`, `lamports ${M.lamports}   ts ${M.ts}`,
@@ -193,7 +207,7 @@ function verifyLines(M) { const sh = h => h.slice(0, 20) + '…' + h.slice(-8);
     `nonce    ${M.nonce}  (${M.nonceSrc})`, `H        ${M.H}`];
   if (M.tap.net === 'devnet') lines.splice(4, 0, 'devnet digest = SHA-256(sig64 | u64le slot | u64le blockTime | u64le fee)  · page/verify.html');
   return lines; }
-function animate(canvas, tap, { ms = 3000 } = {}) { const M = model(tap), ctx = canvas.getContext('2d'), t0 = performance.now(); let id = 0, stop = false;
+function animate(canvas, tap, { ms } = {}) { const M = model(tap); ms = ms || M.revealMs; const ctx = canvas.getContext('2d'), t0 = performance.now(); let id = 0, stop = false;
   const f = now => { if (stop) return; const p = Math.min(1, (now - t0) / ms); render(ctx, M, canvas.width, p); if (p < 1) id = requestAnimationFrame(f); }; id = requestAnimationFrame(f);
   return { model: M, stop() { stop = true; cancelAnimationFrame(id); } }; }
 function still(canvas, tap) { const M = model(tap); render(canvas.getContext('2d'), M, canvas.width, 1); return M; }
@@ -206,6 +220,10 @@ const DEVNET = {
   // DEMO, not a transaction: an unanswered request never produces one. sig = 64 zero bytes (nobody signed).
   // digest = SHA-256("TAP-unanswered-v1" | pubkey32 | u64le(lamports) | u64le(ts)) — see verify.unansweredDigest.
   unanswered: { label: 'demo: request never tapped (no tx exists)', outcome: 'unanswered', net: 'demo', digest: '882a5a7fee5880a14c0034aa882e05059cc89587302f6a3d4e919844eeb7dbfc', sig: '0'.repeat(128), pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658600 } };
-const SEAL = { model, render, animate, still, verifyLines, sha256, curve, kickSchedule, b58decode, hex, DEVNET, version: 'seal-v1' };
+// Hero (receipt-carrying) tx: Cadence's devnet drain shot, honest leg. digest = public v1 digest (fallback / Iris).
+DEVNET.hero = { label: 'hero: receipt-bound co-sign (TAP1 memo) — devnet', outcome: 'approved', net: 'devnet', slot: 509673782, fee: 10000, ts: 1791667194, lamports: 10000,
+  amountText: '5 test tokens (5000000 base units, 6 decimals)', receipt: 'TAP1:512900a78fba9a950e599ead1dcdbbda5b703ba0ad8ac9ceed0db521c9c16f59',
+  sig: 'rJRY77eUMuy4bPkZ8sWhRQBqDDfokhsUyhuE14CBHeTZz87WiYehvGg7FkavguYUDdkHD7gKMyJaBXyXNRtfALT', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', digest: '24eabad60c5fb66c691ec9e55172f4bc4c64d98e5a6e1dd6df1ffbf4ee5460d5' };
+const SEAL = { model, render, animate, still, verifyLines, sha256, curve, kickSchedule, b58decode, hex, DEVNET, version: 'seal-v2' };
 if (typeof module !== 'undefined' && module.exports) module.exports = SEAL; else root.SEAL = SEAL;
 })(typeof window !== 'undefined' ? window : globalThis);

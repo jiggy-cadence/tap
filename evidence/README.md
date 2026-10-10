@@ -45,3 +45,18 @@ where `sig64` is the 64-byte ed25519 signature (base58-decoded tx signature).
 ## Drain / tampered-amount status (wire since 21:00Z)
 
 Wire TEXT-ONLY poll after `2026-10-10T21:00:00Z` found **no** Cadence message carrying a new tampered-amount refused transaction signature. Cadence's drain-shot report at `20:58:54Z` (just before the cutoff) says the phone cosign refused a 5→100 destination swap, and the agent's solo broadcast was rejected at **RPC preflight** (`did not pass signature verification`), not by a new on-chain `MissingRequiredSignature` for that tamper. The on-chain MissingRequiredSignature proof for the video remains `2h859F33…`. No third evidence card added.
+
+## Hero: receipt-bound co-sign (captured 2026-10-10 16:27 CT)
+
+- Sig: `rJRY77eUMuy4bPkZ8sWhRQBqDDfokhsUyhuE14CBHeTZz87WiYehvGg7FkavguYUDdkHD7gKMyJaBXyXNRtfALT` · slot 509673782 · blockTime 1791667194 (2026-10-10 16:19:54 CT) · fee 10000 · success
+- Memo: `TAP1:512900a78fba9a950e599ead1dcdbbda5b703ba0ad8ac9ceed0db521c9c16f59` = sha256("TAP1|" + canon(intent rebuilt from the executed TransferChecked: 5000000 base units, 6 decimals, multisig 7YyQ…KvPL))
+- `node vault/verify-receipt.js <sig> devnet` → ✓ RECEIPT VERIFIED (output in `rJRY77eU.verify.txt`); browser port `page/verify-receipt-browser.js` agrees live and on the saved JSON.
+- Public v1 digest (fallback): `24eabad60c5fb66c691ec9e55172f4bc4c64d98e5a6e1dd6df1ffbf4ee5460d5`
+- Canary `2coKQT…`: no full signature found in the repo, so it was not verified.
+- Scope: the receipt proves the phone signed this intent, not that a human was at the stone.
+
+| File | Bytes | SHA-256 |
+|------|------:|---------|
+| `rJRY77eU.json` | 3199 | `d0dee04c0a7cf3ab218adf242e7025d67c062b84d1b260f4445f613f8425ad6a` |
+| `rJRY77eU.verify.txt` | 862 | `d304428c84ff374ef43820075ae4c485edec9abbea65de7967fe42e35d3e5806` |
+| `seal-receipt-hero.png` | 2248968 | `6c2bce960693e1fd176f64f94ba26631e57c65024099d191c297d83191ef1032` |

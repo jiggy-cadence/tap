@@ -1,0 +1,15 @@
+intent rebuilt from executed tx:
+{
+  "feePayer": "5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY",
+  "source": "BiLqfJtqKf3ufeEicXJpskNDXwTHGSVRVDg7gSd2EL5P",
+  "mint": "HHYGwje9aMSz6TwL25s2275Xb1Ae2bAPCqRqmxHFxMVo",
+  "destination": "Dpt5vbknYHZ8cC2AHScn13K3QtYjE9sXbpfmjSoRAk3h",
+  "multisig": "7YyQPuDHDtJUmaK1z43h9svo5RnpkqS7bpRg5PsaKvPL",
+  "amount": "5000000",
+  "decimals": 6
+}
+memo on chain : TAP1:512900a78fba9a950e599ead1dcdbbda5b703ba0ad8ac9ceed0db521c9c16f59
+recomputed    : TAP1:512900a78fba9a950e599ead1dcdbbda5b703ba0ad8ac9ceed0db521c9c16f59
+multisig co-signers in tx: 5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY, CchTXNULQcZtTRQjJeJEQikPaFgR8YUz5bEGZdYhezhs
+✓ RECEIPT VERIFIED: the memo is the hash of exactly this transfer.
+  Scope: proves the co-signers signed THIS intent. Human presence at the stone is the ceremony's claim, not the memo's.
