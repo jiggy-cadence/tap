@@ -5,6 +5,7 @@
  *   H = SHA-256( "TAP-<piece>-v1" | digest(32) | sig(64) | pubkey(32)
  *              | u64le(lamports) | u64le(ts) | outcome_byte )
  * Outcome encoding (explicit): approved=1, refused=0, unanswered=2.
+ * Unanswered (no tx exists): digest = SHA-256("TAP-unanswered-v1" | pubkey32 | u64le(lamports) | u64le(ts)).
  * MIT, Aperture. */
 (function (root) {
 'use strict';
@@ -58,6 +59,13 @@ function publicDigest({ sig, slot, blockTime, fee }) {
   return { digest, digestHex: hex(digest), inputHex: hex(input),
     formula: 'SHA-256( sig_bytes(64) | u64le(slot) | u64le(blockTime) | u64le(fee) )' };
 }
+/** Unanswered demo: no Solana tx exists. Digest is still deterministic and public. */
+function unansweredDigest({ pubkey, lamports, ts }) {
+  const input = cat(utf8('TAP-unanswered-v1'), bytesOf(pubkey, 32), u64le(lamports), u64le(ts));
+  const digest = sha256(input);
+  return { digest, digestHex: hex(digest), inputHex: hex(input),
+    formula: 'SHA-256( "TAP-unanswered-v1" | pubkey32 | u64le(lamports) | u64le(ts) )' };
+}
 function bytesOf(v, len) {
   if (v instanceof Uint8Array) { if (v.length !== len) throw new Error('expected ' + len + ' bytes'); return v; }
   v = String(v || '');
@@ -82,6 +90,9 @@ const DEVNET_PUBLIC = {
     slot: 509637420, blockTime: 1791658484, fee: 5000, pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY',
     outcome: 'refused', lamports: 5000, ts: 1791658484 }
 };
-const VERIFY = { sha256, hex, unhex, b58decode, u64le, cat, utf8, outcomeByte, sigBytes, publicDigest, pieceH, DEVNET_PUBLIC, version: 'verify-v1' };
+// Demo only: no tx. Digest formula above. sig = 64 zero bytes.
+const DEMO_UNANSWERED = { sig: '0'.repeat(128), pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY',
+  outcome: 'unanswered', lamports: 10000, ts: 1791658600, label: 'demo: request never tapped (no tx exists)' };
+const VERIFY = { sha256, hex, unhex, b58decode, u64le, cat, utf8, outcomeByte, sigBytes, publicDigest, unansweredDigest, pieceH, DEVNET_PUBLIC, DEMO_UNANSWERED, version: 'verify-v2' };
 if (typeof module !== 'undefined' && module.exports) module.exports = VERIFY; else root.VERIFY = VERIFY;
 })(typeof window !== 'undefined' ? window : globalThis);

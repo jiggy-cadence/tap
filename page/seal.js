@@ -204,7 +204,8 @@ const DEVNET = {
   refused: { label: 'agent alone — MissingRequiredSignature', outcome: 'refused', net: 'devnet', digest: '0c4cfe7fadb259786a09ac5662d3ed59c42684d925ca52b9bfaa27921e21dc00', slot: 509637420, fee: 5000,
     sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 5000, ts: 1791658484 },
   // DEMO, not a transaction: an unanswered request never produces one. sig = 64 zero bytes (nobody signed).
-  unanswered: { label: 'demo: request never tapped (no tx exists)', outcome: 'unanswered', net: 'demo', digest: '5ad7a2a1c1e0c9f4e1b7c3d2a8f60e9b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f', sig: '0'.repeat(128), pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658600 } };
+  // digest = SHA-256("TAP-unanswered-v1" | pubkey32 | u64le(lamports) | u64le(ts)) — see verify.unansweredDigest.
+  unanswered: { label: 'demo: request never tapped (no tx exists)', outcome: 'unanswered', net: 'demo', digest: '882a5a7fee5880a14c0034aa882e05059cc89587302f6a3d4e919844eeb7dbfc', sig: '0'.repeat(128), pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658600 } };
 const SEAL = { model, render, animate, still, verifyLines, sha256, curve, kickSchedule, b58decode, hex, DEVNET, version: 'seal-v1' };
 if (typeof module !== 'undefined' && module.exports) module.exports = SEAL; else root.SEAL = SEAL;
 })(typeof window !== 'undefined' ? window : globalThis);

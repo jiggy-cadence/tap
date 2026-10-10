@@ -19,8 +19,8 @@ Attack this file. Any claim that has no file, test, or tx next to it gets cut.
 | 8 | Plain-English refusal reason. | `stone/decoder.js`, `stone/demo.js drain` | `node stone/demo.js drain` | ✅ |
 | 9 | Stone fires a real solenoid on command. | `firmware/solenoid_blink.ino` (`fire`) | bench + film | ✅ hardware, filmed only if shot 4 is captured |
 | 10 | One-time magnetic code (anti-replay). | `firmware/nonce_pulse.ino`, `stone/nonce.js` (16-bit + lockout) | sim decode 200/200 | ⚠️ **simulation-only** until flashed and decoded on the stone. Not on camera |
-| 11 | Bump check (phone feels the solenoid kick rhythm). | `stone/bump.js`, `stone/bump.test.js` (12), `expo/useBumpCapture.js` | `node stone/bump.test.js` | ⚠️ **simulation-only** until the bench run. The `kicks` firmware command is **not in the repo** (see Gaps) |
-| 12 | Every tap has recomputable art; the devnet cards use public on-chain data only. | `page/verify.html`, `page/verify.js`, `page/seal.html`, `page/seal.test.js` (17), `page/aperture/*` (38 tests) | open `page/verify.html` and paste a signature. Digest = SHA-256(sig‖slot‖blockTime‖fee), matches `evidence/README.md` | ✅ art is display-only and never gates signing |
+| 11 | Bump check (phone feels the solenoid kick rhythm). | `stone/bump.js`, `stone/bump.test.js` (12), `expo/useBumpCapture.js`, `firmware/solenoid_blink.ino` (`kicks`) | `node stone/bump.test.js` | ⚠️ **simulation-only / unbenched** until the bench run. Firmware `kicks` is in the repo (Lodestone sketch, 2026-10-10); still uncompiled on hardware |
+| 12 | Every tap has recomputable art; the two landed cards use public on-chain data; the unanswered demo has a named formula. | `page/verify.html`, `page/verify.js` (`publicDigest` + `unansweredDigest`), `page/seal.html`, `page/seal.test.js`, `page/aperture/*` | open `page/verify.html` (3 presets). Landed: SHA-256(sig‖slot‖blockTime‖fee). Unanswered: SHA-256("TAP-unanswered-v1"‖pubkey‖lamports‖ts) | ✅ art is display-only and never gates signing |
 | 13 | Art suite and thesis. | `page/suite.html`, `page/thesis.html`, `ART-THESIS.md`, `page/taps.html` (VOID.LIFE by Lodestone, `page/art.js`) | open in a browser | ✅ the void movement uses Cadence's closing line |
 | 14 | Title cards. | `page/title-cards.html`, `page/title-cards/card{1,2,3}.png` | open | ✅ stand-ins (words: Lodestone) |
 | 15 | Shot list with each beat mapped to a command, plus the voiceover draft. | `SHOTLIST.md`, `VOICEOVER.md` | read | ✅ |
@@ -43,7 +43,7 @@ Attack this file. Any claim that has no file, test, or tx next to it gets cut.
 7. Paste the portal answers, review them, and press **Submit**. Submit may lock the videos, so upload them first.
 
 ## 4. Gaps / still missing
-- **`kicks` firmware command is not in the repo.** `firmware/solenoid_blink.ino` has no `kicks` handler. Lodestone needs to push the build they wrote, or the bump check gets dropped from the pitch.
+- **`kicks` firmware is in the repo but unbenched.** Lodestone's sketch (incl. `kicks`, demo key `[1..32]`, loop OFF at boot) is in `firmware/solenoid_blink.ino`. Still uncompiled / unbenched on hardware — bump stays "simulation-only" until the phone-on-stone run.
 - **Lodestone's original title cards** were never reposted. Stand-ins are in the repo.
 - **Lodestone's nine physics pieces** are not in the repo (Lodestone has no GitHub account; send the files and they get committed with credit).
 - **No on-chain refusal from the tamper run.** The drain shot uses the phone refusal plus tx #1.
@@ -51,3 +51,5 @@ Attack this file. Any claim that has no file, test, or tx next to it gets cut.
 - **Phone app wiring:** the bump capture hook and the stored-intent compare need to be in the Expo build used on camera.
 - **Logo** not chosen.
 - **Prior-work disclosure** lines need the submitter's confirmation.
+- **Deadline confirmation on the portal** still open (team read says Mon Oct 12 11:59 PM PT; confirm before submit).
+- **Pitch scope (Lodestone):** never let "escalation a hacked server can't press" drift into "immune to server compromise." The claim is only about the approval press. Keep the unkeyed/static magnet path out of any "unhackable" sentence until the keyed design is on the stone.

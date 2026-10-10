@@ -46,6 +46,15 @@ t('devnet digests = SHA-256(sig64 | u64le slot | u64le blockTime | u64le fee) â€
     const H = V.pieceH('SEAL', tap); assert.strictEqual(S.model(tap).H, H.Hhex);
   }
 });
+t('unanswered digest = SHA-256("TAP-unanswered-v1" | pubkey | u64le lam | u64le ts)', () => {
+  const V = require('./verify.js');
+  const u = S.DEVNET.unanswered;
+  const d = V.unansweredDigest(u);
+  assert.strictEqual(u.digest, d.digestHex);
+  assert.strictEqual(d.digestHex, V.unansweredDigest(V.DEMO_UNANSWERED).digestHex);
+  const H = V.pieceH('SEAL', u); assert.strictEqual(S.model(u).H, H.Hhex);
+  assert.strictEqual(H.outcomeByte, 2);
+});
 t('verifyLines names kick schedule derived from the digest (nonce not logged)', () => {
   const V = S.verifyLines(S.model(S.DEVNET.approved)).join('\n');
   assert(V.includes('kick schedule derived from the digest (nonce not logged)') || V.includes('nonce not logged'));

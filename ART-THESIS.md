@@ -17,7 +17,7 @@
 Diffie–Hellman showed two strangers can agree on a secret in public. Chaum gave us receipts you can check without trusting who issued them. The cypherpunk rule that follows is *verify, don't trust*. TAP's art is a small, visual version of that rule. It adds no security of its own.
 
 ## Three outcomes, not two
-Per Cadence and Lodestone: **approved** is a decision (things close), **refused** is a decision (things are held apart, clamped, still), and **unanswered** is an absence: a tap was requested and nobody tapped. Unanswered pieces freeze partway (the path neither closes nor breaks), lose their colour, and fade. Outcome byte in every seed: 1 approved, 0 refused, 2 unanswered. The unanswered example is a labelled demo; no transaction exists for it, so its signature is 64 zero bytes.
+Per Cadence and Lodestone: **approved** is a decision (things close), **refused** is a decision (things are held apart, clamped, still), and **unanswered** is an absence: a tap was requested and nobody tapped. Unanswered pieces freeze partway (the path neither closes nor breaks), lose their colour, and fade. Outcome byte in every seed: 1 approved, 0 refused, 2 unanswered. The unanswered example is a labelled demo; no transaction exists for it, so its signature is 64 zero bytes. Its digest is still public and recomputable: `SHA-256("TAP-unanswered-v1" | pubkey32 | u64le(lamports) | u64le(ts))` (see `page/verify.js` → `unansweredDigest`, third preset on `page/verify.html`).
 
 ## The suite: one tap, four movements (`page/suite.html`)
 | Movement | Piece (credit) | Closing (approved) | Opening (refused) |

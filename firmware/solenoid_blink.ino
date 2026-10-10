@@ -23,11 +23,16 @@
  *
  * Serial console @ 115200:
  *   blink        one keyed ceremony (fresh random challenge, current key)
- *   loop         toggle looping ceremonies (default ON at boot)
+ *   loop         toggle looping ceremonies (default OFF at boot — type it)
  *   key <64hex>  set 32-byte session key
  *   chal <64hex> set 32-byte challenge, run one ceremony
  *   fire <ms>    raw solenoid on for <ms> (max 2000) — for the meter check
  *   rate <ms>    symbol period 50..1000 (default 250)
+ *   kicks [dec]  bump-link presence: play the nonce-derived 6-kick schedule
+ *                (SHA-256("TAP-bump-v1:"+decimal(nonce)), gaps 200-700ms,
+ *                40ms kicks). Bare `kicks` uses a fresh esp_random nonce and
+ *                prints it — type the same nonce into the app's bump bench tool.
+ *                UNBENCHED on hardware (sim parameters only).
  *   help         this list
  *
  * Friday-night meter check BEFORE trusting the blink:
@@ -47,9 +52,17 @@ const int LED_PIN      = 2;     // built-in LED: blinks with the solenoid
 const unsigned long MAX_ON_MS = 2000;  // solenoid is rated 1-10s activation
 
 unsigned long symbolMs = 250;
-bool looping = true;
-uint8_t sessionKey[32] = {0};
-bool keySet = false;
+bool looping = false;   // default OFF at boot: type `loop` deliberately (bench rule, 12:22Z sign-off)
+// DEMO session key, hardcoded (my 18:12Z call): 32 bytes [1..32], matches
+// expo-ceremony App.js DEMO_KEY. An all-zeros boot key that never errors is
+// silent theater — this one is at least a KNOWN demo key, printed on every
+// ceremony. Rotate per Fair run via `key <64hex>`; keySet gates nothing
+// because the key is demo-grade by design.
+uint8_t sessionKey[32] = {
+  0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,
+  0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,0x20
+};
+bool keySet = true;
 
 static void hmac_sha256(const uint8_t *key, size_t keylen,
                         const uint8_t *msg, size_t msglen, uint8_t out[32]) {
@@ -60,6 +73,18 @@ static void hmac_sha256(const uint8_t *key, size_t keylen,
   mbedtls_md_hmac_starts(&ctx, key, keylen);
   mbedtls_md_hmac_update(&ctx, msg, msglen);
   mbedtls_md_hmac_finish(&ctx, out);
+  mbedtls_md_free(&ctx);
+}
+
+// one-shot SHA-256 (non-HMAC) for the bump schedule
+static void sha256_once(const uint8_t *msg, size_t msglen, uint8_t out[32]) {
+  mbedtls_md_context_t ctx;
+  const mbedtls_md_info_t *info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, info, 0);
+  mbedtls_md_starts(&ctx);
+  mbedtls_md_update(&ctx, msg, msglen);
+  mbedtls_md_finish(&ctx, out);
   mbedtls_md_free(&ctx);
 }
 
@@ -132,6 +157,45 @@ static void freshCeremony() {
   ceremony(c);
 }
 
+// Bump-link presence (Aperture 19:05:31Z ask (b)). Plays the nonce-derived
+// 6-kick schedule from stone/bump.js, byte-identical: scheduleFromNonce =
+// SHA-256("TAP-bump-v1:" + decimal-string(nonce)), gaps 200-700 ms from
+// digest bytes [2i],[2i+1] (i=1..5), 40 ms kicks. The app (expo-ceremony
+// bump bench tool) captures the accelerometer and verifies kick times.
+// UNBENCHED on hardware — sim parameters only. Total energize 6x40 ms,
+// far under the coil duty limit.
+static void kicks(uint32_t nonce) {
+  char dec[11];
+  ultoa(nonce, dec, 10);
+  uint8_t msg[12 + 10];
+  memcpy(msg, "TAP-bump-v1:", 12);
+  size_t declen = strlen(dec);
+  memcpy(msg + 12, dec, declen);
+  uint8_t d[32];
+  sha256_once(msg, 12 + declen, d);
+  unsigned long sched[6];
+  unsigned long t = 0;
+  for (int i = 0; i < 6; i++) {
+    if (i > 0) {
+      uint16_t r = ((uint16_t)d[2 * i] << 8) | d[2 * i + 1];
+      t += 200UL + (unsigned long)((r / 65535.0f) * 500.0f + 0.5f);
+    }
+    sched[i] = t;
+  }
+  Serial.print(F("KICKS nonce="));
+  Serial.print(nonce);
+  Serial.print(F(" schedule="));
+  for (int i = 0; i < 6; i++) { Serial.print(sched[i]); if (i < 5) Serial.print(','); }
+  Serial.println();
+  unsigned long prev = 0;
+  for (int i = 0; i < 6; i++) {
+    delay(sched[i] - prev);
+    drive(true); delay(40); drive(false);
+    prev = sched[i] + 40;
+  }
+  Serial.println(F("KICKS done"));
+}
+
 static int hexNib(char c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'a' && c <= 'f') return c - 'a' + 10;
@@ -168,6 +232,12 @@ static void handleCommand(String cmd) {
     else Serial.println(F("ERR: need 64 hex chars"));
   } else if (cmd.startsWith("fire ")) {
     energize(cmd.substring(5).toInt());
+  } else if (cmd == "kicks" || cmd.startsWith("kicks ")) {
+    // bump-link presence: `kicks` (fresh random nonce) or `kicks <dec-nonce>`
+    uint32_t nonce = (cmd.length() > 5)
+      ? (uint32_t)strtoul(cmd.substring(6).c_str(), NULL, 10)
+      : esp_random();
+    kicks(nonce);
   } else if (cmd.startsWith("rate ")) {
     long r = cmd.substring(5).toInt();
     if (r >= 50 && r <= 1000) {
@@ -177,7 +247,7 @@ static void handleCommand(String cmd) {
       Serial.println(F("ms"));
     } else Serial.println(F("ERR: 50..1000"));
   } else if (cmd == "help" || cmd == "?") {
-    Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | rate <ms> | help"));
+    Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | help"));
   } else if (cmd.length()) {
     Serial.println(F("ERR: unknown, try help"));
   }
@@ -190,7 +260,7 @@ void setup() {
   Serial.begin(115200);
   delay(500);
   Serial.println(F("\nTAP knot-stone solenoid blink v1"));
-  Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | rate <ms> | help"));
+  Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | help"));
 }
 
 void loop() {
@@ -202,3 +272,4 @@ void loop() {
     delay(1500);  // inter-ceremony pause
   }
 }
+

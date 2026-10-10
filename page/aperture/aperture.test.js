@@ -40,5 +40,6 @@ for (const id of ids) t(id + '/unanswered: H uses outcome byte 2, deterministic,
   const r = rec(); P[id].render(r.canvas, u, 1); const L = r.log.join('\n'); assert(L.includes('saturation') && L.includes('unanswered')); assert(!L.includes('strokeRect(20.000'), 'no refused frame'); });
 t('outcomeByte: approved 1, refused 0, unanswered 2, unknown -> 0 (fail to refused)', () => { assert.deepStrictEqual(['approved', 'refused', 'unanswered', 'x'].map(o => A.outcomeByte({ outcome: o })), [1, 0, 2, 0]); });
 t('devnet digests match page/verify.js publicDigest (no demo key)', () => { const V = require('../verify.js');
-  for (const k of ['approved', 'refused']) { assert.strictEqual(A.DEVNET[k].digest, V.publicDigest(V.DEVNET_PUBLIC[k]).digestHex); } });
+  for (const k of ['approved', 'refused']) { assert.strictEqual(A.DEVNET[k].digest, V.publicDigest(V.DEVNET_PUBLIC[k]).digestHex); }
+  assert.strictEqual(A.DEVNET.unanswered.digest, V.unansweredDigest(V.DEMO_UNANSWERED).digestHex); });
 console.log(n + ' aperture tests pass');

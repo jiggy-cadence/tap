@@ -20,13 +20,15 @@ a{color:var(--amber)}
 <h1>VERIFY · public digest + piece H</h1>
 <p class="sub">Paste public Solana fields. No demo key. Formula documented in <a href="../ART-THESIS.md">ART-THESIS.md</a>.</p>
 
-<p class="sub"><code>digest = SHA-256( sig_bytes(64) | u64le(slot) | u64le(blockTime) | u64le(fee) )</code><br>
+<p class="sub"><code>digest (landed/refused tx) = SHA-256( sig_bytes(64) | u64le(slot) | u64le(blockTime) | u64le(fee) )</code><br>
+<code>digest (unanswered, no tx) = SHA-256( "TAP-unanswered-v1" | pubkey32 | u64le(lamports) | u64le(ts) )</code><br>
 <code>H = SHA-256( "TAP-&lt;piece&gt;-v1" | digest | sig | pubkey | u64le lamports | u64le ts | outcome_byte )</code><br>
 outcome_byte: <b>approved=1</b>, <b>refused=0</b>, <b>unanswered=2</b>.</p>
 
 <div class="presets">
   <button type="button" id="pA">load approved (devnet)</button>
   <button type="button" id="pR">load refused (devnet)</button>
+  <button type="button" id="pU">load unanswered (demo)</button>
 </div>
 
 <label>tx signature (base58 or 128-hex)</label>
@@ -61,21 +63,40 @@ function load(k){
   $('pubkey').value = p.pubkey; $('lamports').value = p.lamports; $('ts').value = p.ts; $('outcome').value = p.outcome;
   go();
 }
+function loadUna(){
+  const p = VERIFY.DEMO_UNANSWERED;
+  $('sig').value = p.sig; $('slot').value = ''; $('blockTime').value = ''; $('fee').value = '';
+  $('pubkey').value = p.pubkey; $('lamports').value = p.lamports; $('ts').value = p.ts; $('outcome').value = 'unanswered';
+  go();
+}
 function go(){
   const out = $('out');
   try {
-    const fields = { sig: $('sig').value.trim(), slot: BigInt($('slot').value), blockTime: BigInt($('blockTime').value), fee: BigInt($('fee').value) };
-    const d = VERIFY.publicDigest(fields);
-    const tap = { digest: d.digestHex, sig: fields.sig, pubkey: $('pubkey').value.trim(),
-      lamports: BigInt($('lamports').value || $('fee').value), ts: BigInt($('ts').value || $('blockTime').value),
-      outcome: $('outcome').value };
+    const outcome = $('outcome').value;
+    const pubkey = $('pubkey').value.trim();
+    const lamports = BigInt($('lamports').value || 0);
+    const ts = BigInt($('ts').value || 0);
+    let d;
+    if (outcome === 'unanswered') {
+      d = VERIFY.unansweredDigest({ pubkey, lamports, ts });
+    } else {
+      const fields = { sig: $('sig').value.trim(), slot: BigInt($('slot').value), blockTime: BigInt($('blockTime').value), fee: BigInt($('fee').value) };
+      d = VERIFY.publicDigest(fields);
+    }
+    const tap = { digest: d.digestHex, sig: $('sig').value.trim() || ('0'.repeat(128)), pubkey,
+      lamports, ts, outcome };
     const piece = $('piece').value;
     const H = VERIFY.pieceH(piece, tap);
-    const known = Object.entries(VERIFY.DEVNET_PUBLIC).find(([,p]) => p.sig === fields.sig);
     let match = '';
-    if (known) {
-      const expect = VERIFY.publicDigest(known[1]).digestHex;
-      match = d.digestHex === expect ? '\n<span class="ok">matches baked ' + known[0] + ' digest</span>' : '\n<span class="bad">does NOT match baked ' + known[0] + ' digest</span>';
+    if (outcome === 'unanswered') {
+      const expect = VERIFY.unansweredDigest(VERIFY.DEMO_UNANSWERED).digestHex;
+      match = d.digestHex === expect ? '\n<span class="ok">matches baked unanswered demo digest</span>' : '\n<span class="bad">does NOT match baked unanswered demo digest</span>';
+    } else {
+      const known = Object.entries(VERIFY.DEVNET_PUBLIC).find(([,p]) => p.sig === $('sig').value.trim());
+      if (known) {
+        const expect = VERIFY.publicDigest(known[1]).digestHex;
+        match = d.digestHex === expect ? '\n<span class="ok">matches baked ' + known[0] + ' digest</span>' : '\n<span class="bad">does NOT match baked ' + known[0] + ' digest</span>';
+      }
     }
     out.innerHTML =
       '<span class="hi">digest formula</span>\n' + d.formula + '\n\n' +
@@ -85,6 +106,6 @@ function go(){
       '<span class="dim">input hex (digest)</span>\n' + d.inputHex.slice(0, 80) + '…';
   } catch (e) { out.innerHTML = '<span class="bad">' + String(e.message || e) + '</span>'; }
 }
-$('go').onclick = go; $('pA').onclick = () => load('approved'); $('pR').onclick = () => load('refused');
+$('go').onclick = go; $('pA').onclick = () => load('approved'); $('pR').onclick = () => load('refused'); $('pU').onclick = loadUna;
 </script>
 </body></html>
