@@ -7,6 +7,13 @@ const spl = require('@solana/spl-token');
 const nacl = require('tweetnacl');
 
 const ALLOWED_EXTRA = new Set([web3.ComputeBudgetProgram.programId.toBase58()]);
+const MEMO_PROGRAM = new web3.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+const { canon } = require('./canon');
+// The tap receipt written INTO the tx: "TAP1:" + sha256("TAP1|" + canon(stored intent)). Anyone can recompute it
+// from the intent and see it on the explorer. The phone only signs if the memo is exactly this (or, unless
+// intent.requireMemo, absent), so the agent cannot put a false receipt on chain under the phone signature.
+const tapMemo = intent => 'TAP1:' + require('crypto').createHash('sha256').update('TAP1|' + canon((({ requireMemo, ...rest }) => rest)(intent))).digest('hex');
+const memoIx = intent => new web3.TransactionInstruction({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(tapMemo(intent)) });
 
 // intent: { feePayer, source, mint, destination, multisig, amount (string|bigint, base units), decimals }
 // msgBytes: tx.serializeMessage() — the exact bytes the signature covers.
@@ -24,7 +31,11 @@ function inspect(msgBytes, intent, phonePubkey) {
     keys: ix.accounts.map(i => ({ pubkey: msg.accountKeys[i], isSigner: msg.isAccountSigner(i), isWritable: msg.isAccountWritable(i) })),
     data: Buffer.from(require('bs58').decode(ix.data)),
   }));
-  const token = ixs.filter(ix => !ALLOWED_EXTRA.has(ix.programId.toBase58()));
+  const memos = ixs.filter(ix => ix.programId.equals(MEMO_PROGRAM));
+  if (memos.length > 1) return { ok: false, why: 'more than one memo' };
+  if (memos.length && (memos[0].keys.length || !memos[0].data.equals(Buffer.from(tapMemo(intent))))) return { ok: false, why: 'memo is not this tap receipt' };
+  if (!memos.length && intent.requireMemo) return { ok: false, why: 'tap receipt memo missing' };
+  const token = ixs.filter(ix => !ALLOWED_EXTRA.has(ix.programId.toBase58()) && !ix.programId.equals(MEMO_PROGRAM));
   if (token.length !== 1) return { ok: false, why: `expected exactly 1 token instruction, got ${token.length}` };
   const ix = token[0];
   if (!ix.programId.equals(spl.TOKEN_PROGRAM_ID)) return { ok: false, why: 'not the SPL Token program' };
@@ -51,4 +62,4 @@ function cosign(msgBytes, intent, phoneKeypair) {
   return { ok: true, signature: nacl.sign.detached(Buffer.from(msgBytes), phoneKeypair.secretKey), parsed: r.parsed };
 }
 
-module.exports = { inspect, cosign };
+module.exports = { inspect, cosign, tapMemo, memoIx, MEMO_PROGRAM };

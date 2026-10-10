@@ -4,7 +4,7 @@
 const web3 = require('@solana/web3.js');
 const spl = require('@solana/spl-token');
 const nacl = require('tweetnacl');
-const { cosign } = require('./cosign');
+const { cosign, memoIx, MEMO_PROGRAM } = require('./cosign');
 
 const kp = () => web3.Keypair.generate();
 const agent = kp(), phone = kp(), mallory = kp();
@@ -41,5 +41,12 @@ refused('extra system transfer appended', build([tc(), web3.SystemProgram.transf
 refused('honest + trailing bytes (parser differential)', Buffer.concat([honest, Buffer.alloc(64, 7)]));
 refused('durable nonce (signature never expires)', build([web3.SystemProgram.nonceAdvance({ noncePubkey: evil, authorizedPubkey: agent.publicKey }), tc()]));
 refused('v0 message, honest economics', new web3.TransactionMessage({ payerKey: agent.publicKey, recentBlockhash: BH, instructions: [tc()] }).compileToV0Message().serialize());
+ok('tap receipt memo → signed', cosign(build([tc(), memoIx(intent)]), intent, phone).ok);
+const memoRaw = txt => new web3.TransactionInstruction({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(txt) });
+refused('forged memo (receipt for a different intent)', build([tc(), memoIx({ ...intent, amount: '100000000' })]));
+refused('free-text memo', build([tc(), memoRaw('approved by human, trust me')]));
+refused('two receipt memos', build([tc(), memoIx(intent), memoIx(intent)]));
+{ const r = cosign(build([tc()]), { ...intent, requireMemo: true }, phone); ok('memo missing when required → REFUSED' + (r.ok ? '' : ` (${r.refused})`), !r.ok); }
+ok('receipt memo + requireMemo → signed (flag not in digest)', cosign(build([tc(), memoIx(intent)]), { ...intent, requireMemo: true }, phone).ok);
 refused('garbage bytes', Buffer.from('not a solana message at all, nope'));
 console.log(`${pass}/${pass + fail} pass`); process.exitCode = fail ? 1 : 0;
