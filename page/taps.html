@@ -42,6 +42,7 @@ h1 em{color:var(--amber);font-style:italic}
 code{color:var(--amber)}
 footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:18px;font-size:11px;color:#7d7259;letter-spacing:.06em}
 @media(max-width:700px){.paste{grid-template-columns:1fr}}
+#sl{display:none}#big.seal #bc{display:none}#big.seal #sl{display:block;width:min(70vh,46vw);height:min(70vh,46vw)}
 </style></head><body><div class="wrap">
 <div class="mark">◉ TAP &nbsp;·&nbsp; Aperture × Lodestone × Cadence</div>
 <h1>Every tap leaves<br><em>its own mark.</em></h1>
@@ -58,10 +59,10 @@ footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:18px;font-si
 <div class="label">Taps <span id="cnt" style="letter-spacing:.1em"></span></div>
 <div class="grid" id="grid"></div>
 <p class="note">Click any card to open it large and animated. The animation replays the tap: field settling, iris resolving. The final frame is the same deterministic image as the card.</p>
-<footer>Art math: Iris by Aperture (E(n,m) blade spacing, field-line light), settling field after Lodestone's Field Settling, re-implemented here. Approved taps also bloom <b>VOID.LIFE</b> by Lodestone (<code>art.js</code>, reused with credit), seeded by that tap. Demo key is public on purpose. Liveness, not distance. Nothing on this page is a real-funds signature.</footer>
+<footer>Art math: Iris by Aperture (E(n,m) blade spacing, field-line light), settling field after Lodestone's Field Settling, re-implemented here. Approved taps also bloom <b>VOID.LIFE</b> by Lodestone (<code>art.js</code>, reused with credit), seeded by that tap. Demo key is public on purpose. Liveness, not distance. Large view of signed taps also shows <b>SEAL</b> by Aperture (<code>seal.js</code>): every mark is computed from the tap's digest, signature, pubkey, lamports and time; the curve is a toy curve over F<sub>1021</sub>, not Ed25519. Nothing on this page is a real-funds signature.</footer>
 </div>
-<div id="big"><span class="x" id="bx">close ✕</span><div class="pair"><canvas id="bc" width="1400" height="1400"></canvas><canvas id="vl" width="720" height="720"></canvas></div><div class="credit" id="vlc"></div><div class="cap" id="bcap"></div></div>
-<script src="art.js"></script>
+<div id="big"><span class="x" id="bx">close ✕</span><div class="pair"><canvas id="bc" width="1400" height="1400"></canvas><canvas id="sl" width="1600" height="1600"></canvas><canvas id="vl" width="720" height="720"></canvas></div><div class="credit" id="vlc"></div><div class="cap" id="bcap"></div></div>
+<script src="art.js"></script><script src="seal.js"></script>
 <script>
 const TAPS=[
  {
@@ -151,7 +152,7 @@ const TAPS=[
   "time": "2026-10-10",
   "label": "agent alone — refused on-chain",
   "how": "devnet",
-  "sig": "2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD",
+  "sig": "2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD", "pubkey": "5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY", "lamports": 5000, "ts": 1791658484,
   "note": "real devnet tx · digest = demo-key HMAC over tx ref"
  },
  {
@@ -161,7 +162,7 @@ const TAPS=[
   "time": "2026-10-10",
   "label": "ceremony co-sign — landed",
   "how": "devnet",
-  "sig": "2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq",
+  "sig": "2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq", "pubkey": "5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY", "lamports": 10000, "ts": 1791658488,
   "note": "real devnet tx · digest = demo-key HMAC over tx ref"
  }
 ]
@@ -191,7 +192,7 @@ function draw(ctx,W,h,refused,p=1,t=0){const m=model(h),cx=W/2,cy=W/2,R=W*.40,Sc
  // settling field layer
  ctx.lineWidth=Math.max(.6,W/1300);ctx.strokeStyle=refused?'rgba(190,80,55,0.17)':'rgba(220,150,60,0.14)';
  for(const s of m.S)poly(ctx,s,cx,cy,Sc,e);
- ctx.fillStyle=refused?'rgba(220,60,40,0.5)':'rgba(240,180,90,0.55)';for(const s of m.S){const q=s[Math.min(s.length-1,Math.floor((s.length-1)*e))];ctx.fillRect(cx+q[0]*Sc,cy+q[1]*Sc,W/600,W/600)}
+ ctx.fillStyle=refused?'rgba(220,60,40,0.5)':'rgba(240,180,90,0.55)';for(const s of m.S){const q=s[Math.min(s.length-1,Math.floor((s.length-1)*e))];if(!q)continue;ctx.fillRect(cx+q[0]*Sc,cy+q[1]*Sc,W/600,W/600)}
  for(const a of m.A){ctx.strokeStyle='rgba(232,163,61,0.18)';ctx.beginPath();ctx.arc(cx+a.x*Sc,cy+a.y*Sc,W*.012,0,7);ctx.stroke()}
  ctx.lineWidth=Math.max(.5,W/1600);ctx.strokeStyle='rgba(200,140,50,0.07)';for(const L of m.L)poly(ctx,L,cx,cy,Sc);
  // iris
@@ -227,12 +228,16 @@ window.addTap=async function(t){if(typeof t==='string')t=JSON.parse(t);t={...t,d
 TAPS.forEach(card);
 const big=document.getElementById('big'),bc=document.getElementById('bc'),bx=bc.getContext('2d');let raf=0;
 function openBig(t){big.classList.add('on');const ref=t.outcome==='refused';document.getElementById('bcap').textContent=`${ref?'REFUSED':'APPROVED'} · ${t.label||''} · ${t.amount||''} · ${t.digest}`;
- const t0=performance.now();cancelAnimationFrame(raf);startVL(t);const loop=now=>{const p=Math.min(1,(now-t0)/3200);draw(bx,1400,t.digest,ref,p,now);raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+ const t0=performance.now();cancelAnimationFrame(raf);startSL(t);startVL(t);const loop=now=>{const p=Math.min(1,(now-t0)/3200);draw(bx,1400,t.digest,ref,p,now);raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
 let vlH=null;const vlc=document.getElementById('vlc');
 // VOID.LIFE by Lodestone: approved taps only, seeded by the tap (tx sig if real, else digest). Fail-open: display only.
-function startVL(t){stopVL();if(t.outcome==='refused'||!window.KnotArt)return;try{vlH=KnotArt.renderAnimated(document.getElementById('vl'),t.sig||t.digest,{w:720,h:720});big.classList.add('vl');vlc.textContent='VOID.LIFE — Lodestone · seeded by this tap · same tap, same art'}catch(e){console.error('VOID.LIFE',e);stopVL()}}
-function stopVL(){try{vlH&&vlH.stop&&vlH.stop()}catch(e){}vlH=null;big.classList.remove('vl');vlc.textContent=''}
-function close(){big.classList.remove('on');cancelAnimationFrame(raf);stopVL()}
+function startVL(t){stopVL();if(t.outcome==='refused'||!window.KnotArt)return;try{vlH=KnotArt.renderAnimated(document.getElementById('vl'),t.sig||t.digest,{w:720,h:720});big.classList.add('vl');setCred()}catch(e){console.error('VOID.LIFE',e);stopVL()}}
+// SEAL by Aperture: needs a real signature + pubkey (devnet cards, or app taps that pass sig/pubkey/lamports/ts). Fail-open.
+let slH=null;function startSL(t){stopSL();if(!window.SEAL||!t.sig||!t.pubkey)return;try{slH=SEAL.animate(document.getElementById('sl'),{...t,net:t.how==='devnet'?'devnet':''});big.classList.add('seal');setCred()}catch(e){console.error('SEAL',e);stopSL()}}
+function stopSL(){try{slH&&slH.stop()}catch(e){}slH=null;big.classList.remove('seal');setCred()}
+function setCred(){const a=[];if(slH)a.push('SEAL — Aperture · SHA-256 rounds, toy curve walk, RK4 dipoles, kick ring · verify panel on the art');if(vlH)a.push('VOID.LIFE — Lodestone · seeded by this tap');vlc.textContent=a.join('   |   ')}
+function stopVL(){try{vlH&&vlH.stop&&vlH.stop()}catch(e){}vlH=null;big.classList.remove('vl');setCred()}
+function close(){big.classList.remove('on');cancelAnimationFrame(raf);stopVL();stopSL()}
 document.getElementById('bx').onclick=close;big.onclick=e=>{if(e.target===big)close()};addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 let pvRef=false;const pv=document.getElementById('pv').getContext('2d'),hx=document.getElementById('hx');
 async function prev(){const h=await toHex(hx.value||TAPS[2].digest);draw(pv,520,h,pvRef);document.getElementById('hh').innerHTML=`<span style="color:var(--bone)">${h}</span><br>App hook: <code>window.addTap({digest, outcome, amount, time, label})</code>`}
