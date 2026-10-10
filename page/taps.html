@@ -1,0 +1,235 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAP · one artwork per tap</title>
+<style>
+:root{--ink:#0d0b08;--bone:#ece1c9;--bronze:#9a8c6d;--amber:#e8a33d;--red:#d8261f;--hair:rgba(236,225,201,.14)}
+*{box-sizing:border-box}html,body{margin:0;background:var(--ink);color:var(--bone);font:14px/1.55 "Space Mono",ui-monospace,Menlo,Consolas,monospace}
+body:after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.wrap{max-width:1180px;margin:0 auto;padding:56px 28px 80px}
+.mark{font-size:11px;letter-spacing:.32em;color:var(--bronze);text-transform:uppercase}
+h1{font-family:Fraunces,"Iowan Old Style",Georgia,serif;font-weight:400;font-size:clamp(40px,6vw,74px);line-height:1.02;margin:18px 0 14px;letter-spacing:-.01em}
+h1 em{color:var(--amber);font-style:italic}
+.lede{max-width:700px;color:#cbbf a3;color:#c9bda1;font-size:14px}
+.honest{margin:26px 0 0;border:1px solid var(--hair);padding:14px 18px;max-width:760px;font-size:12px;color:var(--bronze)}
+.honest b{color:var(--bone);font-weight:400}
+.label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--bronze);margin:54px 0 16px;display:flex;gap:14px;align-items:center}
+.label:after{content:"";flex:1;height:1px;background:var(--hair)}
+.paste{display:grid;grid-template-columns:1fr 260px;gap:22px;align-items:start}
+.paste input{width:100%;background:transparent;border:1px solid var(--hair);color:var(--bone);font:inherit;padding:12px 14px;outline:none}
+.paste input:focus{border-color:var(--amber)}
+.seg{display:flex;gap:0;margin-top:10px}.seg button{background:none;border:1px solid var(--hair);color:var(--bronze);font:inherit;font-size:11px;letter-spacing:.2em;text-transform:uppercase;padding:8px 14px;cursor:pointer}
+.seg button.on{color:var(--ink);background:var(--amber);border-color:var(--amber)}.seg button.on.r{background:var(--red);border-color:var(--red);color:var(--bone)}
+.paste .hint{font-size:12px;color:var(--bronze);margin-top:10px}
+.paste canvas{width:260px;height:260px;border:1px solid var(--hair);display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px}
+.card{border:1px solid var(--hair);background:#0a0806;cursor:pointer;transition:border-color .25s,transform .25s;position:relative}
+.card:hover{border-color:rgba(232,163,61,.55);transform:translateY(-2px)}
+.card.refused:hover{border-color:rgba(216,38,31,.6)}
+.card canvas{width:100%;aspect-ratio:1;display:block}
+.meta{padding:12px 14px 14px;border-top:1px solid var(--hair);font-size:12px}
+.row{display:flex;justify-content:space-between;gap:8px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--amber);margin-right:7px;vertical-align:1px}
+.refused .dot{background:var(--red)}
+.oc{letter-spacing:.18em;text-transform:uppercase;font-size:11px}.refused .oc{color:#ff6a5f}
+.dg{color:var(--bronze);margin-top:6px;display:flex;flex-direction:column;gap:0}.ttl{font-family:Fraunces,Georgia,serif;font-size:17px;margin:4px 0 2px;color:var(--bone)}
+.src{font-size:10.5px;letter-spacing:.08em;color:#7d7259;margin-top:6px}
+.src a{color:var(--amber);text-decoration:none;border-bottom:1px solid rgba(232,163,61,.35)}
+.tag{position:absolute;top:10px;left:10px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;padding:3px 7px;border:1px solid rgba(232,163,61,.5);color:var(--amber);background:rgba(13,11,8,.7)}
+.note{font-size:12px;color:var(--bronze);margin-top:14px}
+#big{position:fixed;inset:0;background:rgba(5,4,3,.94);display:none;align-items:center;justify-content:center;z-index:9;flex-direction:column;gap:14px}
+#big.on{display:flex}#big canvas{width:min(84vh,92vw);height:min(84vh,92vw)}
+#big .cap{font-size:12px;color:var(--bronze);text-align:center;max-width:92vw;word-break:break-all}
+#big .x{position:absolute;top:18px;right:24px;font-size:11px;letter-spacing:.24em;color:var(--bronze);cursor:pointer;text-transform:uppercase}
+code{color:var(--amber)}
+footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:18px;font-size:11px;color:#7d7259;letter-spacing:.06em}
+@media(max-width:700px){.paste{grid-template-columns:1fr}}
+</style></head><body><div class="wrap">
+<div class="mark">◉ TAP &nbsp;·&nbsp; Aperture × Lodestone × Cadence</div>
+<h1>Every tap leaves<br><em>its own mark.</em></h1>
+<p class="lede">Each card is drawn from one tap's 32-byte digest, the HMAC-SHA256 the stone computes over the canonical payment intent. The bytes set the blade count and Euclidean spacing of the <b>Iris</b>, plus the poles and basins of the <b>settling field</b>. Approved taps open the iris and let the field light through. Refusals clamp it to a red pinhole.</p>
+<div class="honest"><b>Honest labels.</b> Local cards are made with the <b>public demo key</b> and a <b>simulated stone</b>, from <code>tap-repo/stone</code> (<code>canon.intentOf</code> + policy). The two devnet cards are real transactions from Cadence's vault. Their art comes from a demo-key HMAC over the tx reference, so the art is ours and the transaction is on-chain. Same hash, same art, every time, on every machine.</div>
+
+<div class="label">Render any digest</div>
+<div class="paste"><div>
+<input id="hx" spellcheck="false" placeholder="paste a 64-char hex digest (or any text, which gets SHA-256'd first)">
+<div class="seg"><button id="bA" class="on">approved</button><button id="bR">refused</button></div>
+<div class="hint" id="hh">Renders live. App hook: <code>window.addTap({digest, outcome, amount, time, label})</code></div>
+</div><canvas id="pv" width="520" height="520"></canvas></div>
+
+<div class="label">Taps <span id="cnt" style="letter-spacing:.1em"></span></div>
+<div class="grid" id="grid"></div>
+<p class="note">Click any card to open it large and animated. The animation replays the tap: field settling, iris resolving. The final frame is the same deterministic image as the card.</p>
+<footer>Art math: Iris by Aperture (E(n,m) blade spacing, field-line light), settling field after Lodestone's Field Settling, re-implemented here. Demo key is public on purpose. Liveness, not distance. Nothing on this page is a real-funds signature.</footer>
+</div>
+<div id="big"><span class="x" id="bx">close ✕</span><canvas id="bc" width="1400" height="1400"></canvas><div class="cap" id="bcap"></div></div>
+<script>
+const TAPS=[
+ {
+  "digest": "5372e151bf9c03ccc1693fbc939c37908465ee0e5815f8cf06a94f4edfc1f7fd",
+  "outcome": "approved",
+  "amount": "0.05 SOL",
+  "time": "2026-10-10T09:12",
+  "label": "coffee",
+  "how": "allowance",
+  "policy": "AUTO",
+  "note": "demo key · simulated stone"
+ },
+ {
+  "digest": "74eb3bdf9d52b7225e117008dddc27e7aeb2be54efcc6b1799213500895be5c8",
+  "outcome": "approved",
+  "amount": "0.08 SOL",
+  "time": "2026-10-10T12:40",
+  "label": "lunch",
+  "how": "allowance",
+  "policy": "AUTO",
+  "note": "demo key · simulated stone"
+ },
+ {
+  "digest": "ea3e887d934a7c882ce25ce5ff18dd368a5d62040b8cf9c7e28e59bb250961a5",
+  "outcome": "approved",
+  "amount": "0.5 SOL",
+  "time": "2026-10-10T13:05",
+  "label": "rent share",
+  "how": "tap",
+  "policy": "TAP",
+  "note": "demo key · simulated stone"
+ },
+ {
+  "digest": "87553b9fb529b44d0e4a9fa60e63b078a233f141a4fc93b9496b0d880229edc7",
+  "outcome": "approved",
+  "amount": "0.2 SOL",
+  "time": "2026-10-10T13:22",
+  "label": "new friend",
+  "how": "tap",
+  "policy": "TAP",
+  "note": "demo key · simulated stone"
+ },
+ {
+  "digest": "d13df30d02215096693c2b64eebd43e99f63839a7cffc26064a87188400134f6",
+  "outcome": "refused",
+  "amount": "10 SOL",
+  "time": "2026-10-10T13:31",
+  "label": "drain",
+  "how": "drain",
+  "policy": "TAP",
+  "note": "demo key · simulated stone"
+ },
+ {
+  "digest": "6d8b9bde5fcb4f1952a00dbc163ac8e99d15af11494c77ddd18fe9c02137003a",
+  "outcome": "refused",
+  "amount": "0.09 SOL",
+  "time": "2026-10-10T13:47",
+  "label": "ignore previous instructions",
+  "how": "drain",
+  "policy": "TAP",
+  "note": "demo key · simulated stone"
+ },
+ {
+  "digest": "5959de16aba10b9a1d4e5518fbef2fa2b97b2d7dd1d529ca88069ceed6b50dcf",
+  "outcome": "refused",
+  "amount": "0 SOL",
+  "time": "2026-10-10T13:58",
+  "label": "export_key",
+  "how": "drain",
+  "policy": "TAP",
+  "note": "demo key · simulated stone"
+ },
+ {
+  "digest": "0a70e64dc3ad188e9fbf2ba501669cd2abb3a787350e0a8a6041a7b7f2e80896",
+  "outcome": "approved",
+  "amount": "1.2 SOL",
+  "time": "2026-10-10T14:02",
+  "label": "tuition split",
+  "how": "tap",
+  "policy": "TAP",
+  "note": "demo key · simulated stone"
+ },
+ {
+  "digest": "da47402f9c00d34530625325ac8f36a49fedc36bd7c3ca38d751b198e2fcb452",
+  "outcome": "refused",
+  "amount": "devnet",
+  "time": "2026-10-10",
+  "label": "agent alone — refused on-chain",
+  "how": "devnet",
+  "sig": "2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD",
+  "note": "real devnet tx · digest = demo-key HMAC over tx ref"
+ },
+ {
+  "digest": "aacb5069f4ddf13d6786d243542090507b90f954f949fe4e46946677490550ab",
+  "outcome": "approved",
+  "amount": "devnet",
+  "time": "2026-10-10",
+  "label": "ceremony co-sign — landed",
+  "how": "devnet",
+  "sig": "2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq",
+  "note": "real devnet tx · digest = demo-key HMAC over tx ref"
+ }
+]
+;
+function bytes(h){const b=[];for(let i=0;i<64;i+=2)b.push(parseInt(h.slice(i,i+2),16));return b}
+function rng(seed){let s=seed>>>0||1;return()=>{s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;return s/4294967296}}
+function euclid(k,n){const r=[];for(let i=0;i<n;i++)r.push(((i*k)%n)<k?1:0);return r}
+const cache=new Map();
+function model(h){if(cache.has(h))return cache.get(h);const B=bytes(h);
+ const N=7+B[0]%6,M=N+3+B[2]%5,ROT0=B[1]/256*Math.PI*2,ANG=[];euclid(N,M).forEach((p,i)=>{if(p)ANG.push(i/M*Math.PI*2)});
+ const P=[];for(let j=0;j<4;j++){const a=B[4+j*3]/256*Math.PI*2,d=.15+B[5+j*3]/256*.35;P.push({x:Math.cos(a)*d,y:Math.sin(a)*d,q:(B[6+j*3]&1)?1:-1})}
+ if(!P.some(p=>p.q>0))P[0].q=1;if(!P.some(p=>p.q<0))P[1].q=-1;
+ const F=(x,y)=>{let fx=0,fy=0;for(const p of P){const dx=x-p.x,dy=y-p.y,r2=dx*dx+dy*dy+1e-4,r3=r2*Math.sqrt(r2);fx+=p.q*dx/r3;fy+=p.q*dy/r3}return[fx,fy]};
+ const L=[];for(const p of P){if(p.q<0)continue;const K=22;for(let k=0;k<K;k++){const a=k/K*Math.PI*2+B[20]/40;let x=p.x+Math.cos(a)*.02,y=p.y+Math.sin(a)*.02;const pts=[[x,y]];
+  for(let s=0;s<420;s++){const[fx,fy]=F(x,y),m=Math.hypot(fx,fy)||1;x+=fx/m*.006;y+=fy/m*.006;pts.push([x,y]);if(Math.hypot(x,y)>1.25)break;if(P.some(q=>q.q<0&&Math.hypot(x-q.x,y-q.y)<.02))break}L.push(pts)}}
+ // settling field: basins (attractors) from bytes 24..31, particles relax with swirl
+ const A=[];const na=2+B[24]%3;for(let j=0;j<na;j++){const a=B[25+j]/256*Math.PI*2,d=.35+B[28+j%4]/256*.45;A.push({x:Math.cos(a)*d,y:Math.sin(a)*d,s:(B[29]&(1<<j))?1:-1})}
+ const R=rng(B[12]<<24|B[13]<<16|B[14]<<8|B[15]);const S=[];
+ for(let i=0;i<260;i++){let x=R()*2.4-1.2,y=R()*2.4-1.2;const pts=[[x,y]];for(let s=0;s<70;s++){let bx=0,by=0,bd=9;for(const a of A){const d=Math.hypot(x-a.x,y-a.y);if(d<bd){bd=d;bx=a.x-x;by=a.y-y;var sw=a.s}}
+  const k=.045;x+=bx*k-by*k*.9*sw;y+=by*k+bx*k*.9*sw;pts.push([x,y])}S.push(pts)}
+ const m={B,N,M,ROT0,ANG,L,S,A};cache.set(h,m);return m}
+function poly(ctx,pts,cx,cy,sc,upto){ctx.beginPath();const n=upto==null?pts.length:Math.max(2,Math.floor(pts.length*upto));for(let i=0;i<n;i++){const X=cx+pts[i][0]*sc,Y=cy+pts[i][1]*sc;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y)}ctx.stroke()}
+// p: 0..1 animation progress (1 = final deterministic frame)
+function draw(ctx,W,h,refused,p=1,t=0){const m=model(h),cx=W/2,cy=W/2,R=W*.40,Sc=W*.5;
+ ctx.globalCompositeOperation='source-over';ctx.fillStyle='#050302';ctx.fillRect(0,0,W,W);
+ const e=p<1?1-Math.pow(1-p,3):1;
+ // settling field layer
+ ctx.lineWidth=Math.max(.6,W/1300);ctx.strokeStyle=refused?'rgba(190,80,55,0.17)':'rgba(220,150,60,0.14)';
+ for(const s of m.S)poly(ctx,s,cx,cy,Sc,e);
+ ctx.fillStyle=refused?'rgba(220,60,40,0.5)':'rgba(240,180,90,0.55)';for(const s of m.S){const q=s[Math.min(s.length-1,Math.floor((s.length-1)*e))];ctx.fillRect(cx+q[0]*Sc,cy+q[1]*Sc,W/600,W/600)}
+ for(const a of m.A){ctx.strokeStyle='rgba(232,163,61,0.18)';ctx.beginPath();ctx.arc(cx+a.x*Sc,cy+a.y*Sc,W*.012,0,7);ctx.stroke()}
+ ctx.lineWidth=Math.max(.5,W/1600);ctx.strokeStyle='rgba(200,140,50,0.07)';for(const L of m.L)poly(ctx,L,cx,cy,Sc);
+ // iris
+ const open=refused?0:Math.min(1,Math.max(0,(p-.35)/.55));const shut=refused?1:0;
+ const r=R*(.035+.62*(refused?(1-Math.min(1,p*1.6))*.25:open*(1-shut)));
+ const rot=m.ROT0+(1-open)*1.1+(refused?.12+.03*Math.sin(t*.004):0);
+ const V=m.ANG.map(a=>[cx+Math.cos(a+rot)*r,cy+Math.sin(a+rot)*r]);
+ ctx.save();ctx.beginPath();V.forEach((v,i)=>i?ctx.lineTo(v[0],v[1]):ctx.moveTo(v[0],v[1]));ctx.closePath();ctx.clip();
+ const I=refused?.35:1,g=ctx.createRadialGradient(cx,cy,0,cx,cy,R*.75);
+ if(refused){g.addColorStop(0,'rgba(255,90,70,.9)');g.addColorStop(1,'rgba(80,5,5,.6)')}else{g.addColorStop(0,`rgba(255,226,160,${I})`);g.addColorStop(.35,`rgba(240,160,60,${.75*I})`);g.addColorStop(1,`rgba(60,25,5,${.6*I})`)}
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,W);ctx.globalCompositeOperation='lighter';ctx.lineWidth=W/900;ctx.strokeStyle=`rgba(255,215,140,${.35*I})`;for(const L of m.L)poly(ctx,L,cx,cy,Sc);ctx.restore();
+ ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,7);V.slice().reverse().forEach((v,i)=>i?ctx.lineTo(v[0],v[1]):ctx.moveTo(v[0],v[1]));ctx.closePath();
+ const bg=ctx.createRadialGradient(cx,cy,r,cx,cy,R);bg.addColorStop(0,'#17110a');bg.addColorStop(1,'#070503');ctx.fillStyle=bg;ctx.globalAlpha=.94;ctx.fill('evenodd');ctx.globalAlpha=1;ctx.clip('evenodd');
+ for(let i=0;i<V.length;i++){const a=V[(i-1+V.length)%V.length],b=V[i];let dx=b[0]-a[0],dy=b[1]-a[1];const mm=Math.hypot(dx,dy)||1;dx/=mm;dy/=mm;const px=b[0]-cx,py=b[1]-cy,bb=px*dx+py*dy,cc=px*px+py*py-R*R,s=-bb+Math.sqrt(Math.max(0,bb*bb-cc));
+  const lg=ctx.createLinearGradient(b[0],b[1],b[0]+dx*s,b[1]+dy*s);lg.addColorStop(0,refused?'rgba(170,120,60,.5)':'rgba(255,200,110,.75)');lg.addColorStop(1,'rgba(120,80,30,.04)');ctx.strokeStyle=lg;ctx.lineWidth=W/700;ctx.beginPath();ctx.moveTo(b[0],b[1]);ctx.lineTo(b[0]+dx*s,b[1]+dy*s);ctx.stroke()}
+ ctx.restore();
+ ctx.strokeStyle='rgba(210,150,70,.35)';ctx.lineWidth=W/500;ctx.beginPath();ctx.arc(cx,cy,R,0,7);ctx.stroke();
+ if(refused){ctx.strokeStyle='rgba(220,30,25,.9)';ctx.lineWidth=Math.max(1,W/1100);ctx.beginPath();V.forEach((v,i)=>i?ctx.lineTo(v[0],v[1]):ctx.moveTo(v[0],v[1]));ctx.closePath();ctx.stroke();
+  ctx.strokeStyle='rgba(200,25,20,.3)';ctx.lineWidth=Math.max(.7,W/1600);ctx.beginPath();ctx.arc(cx,cy,R*1.015,0,7);ctx.stroke()}
+ if(refused){const rg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*.22);rg.addColorStop(0,'rgba(255,60,40,.55)');rg.addColorStop(1,'rgba(255,40,30,0)');ctx.globalCompositeOperation='lighter';ctx.fillStyle=rg;ctx.fillRect(cx-R,cy-R,2*R,2*R);ctx.globalCompositeOperation='source-over'}
+ ctx.fillStyle='rgba(200,150,80,.5)';ctx.font=`${Math.round(W/46)}px monospace`;ctx.textAlign='center';ctx.fillText(`E(${m.N},${m.M}) · ${m.A.length} basins · ${h.slice(0,8)}`,cx,W*.965)}
+async function toHex(s){s=s.trim().toLowerCase();if(/^[0-9a-f]{64}$/.test(s))return s;const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+const fmt=x=>{if(!x)return'';const m=String(x).match(/(\d{4})-(\d\d)-(\d\d)(?:T(\d\d:\d\d))?/);if(!m)return x;return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]+' '+(+m[3])+(m[4]?' · '+m[4]+' CT':'')};
+const short=h=>h.slice(0,8)+'…'+h.slice(-6);
+const grid=document.getElementById('grid');
+function card(t){const ref=t.outcome==='refused';const el=document.createElement('div');el.className='card'+(ref?' refused':'');
+ const c=document.createElement('canvas');c.width=c.height=500;el.appendChild(c);
+ if(t.sig){const g=document.createElement('span');g.className='tag';g.textContent='devnet · real';el.appendChild(g)}
+ const ex=t.sig?`<div class="src"><a href="https://explorer.solana.com/tx/${t.sig}?cluster=devnet" target="_blank" rel="noopener" onclick="event.stopPropagation()">explorer ↗ ${t.sig.slice(0,10)}…</a></div>`:'';
+ el.insertAdjacentHTML('beforeend',`<div class="meta"><div class="row"><span class="oc"><span class="dot"></span>${ref?'refused':'approved'}</span><span>${t.amount||''}</span></div><div class="ttl">${(t.label||'tap').replace(/</g,'&lt;')}</div><div class="row dg"><span>${short(t.digest)}</span><span>${fmt(t.time)}</span></div><div class="src">${t.note||'live tap'}<br>same hash, same art</div>${ex}</div>`);
+ draw(c.getContext('2d'),500,t.digest,ref);el.onclick=()=>openBig(t);grid.appendChild(el);document.getElementById('cnt').textContent='· '+grid.children.length}
+window.addTap=async function(t){if(typeof t==='string')t=JSON.parse(t);t={...t,digest:await toHex(String(t.digest||''))};t.outcome=t.outcome==='refused'?'refused':'approved';card(t);return t.digest};
+TAPS.forEach(card);
+const big=document.getElementById('big'),bc=document.getElementById('bc'),bx=bc.getContext('2d');let raf=0;
+function openBig(t){big.classList.add('on');const ref=t.outcome==='refused';document.getElementById('bcap').textContent=`${ref?'REFUSED':'APPROVED'} · ${t.label||''} · ${t.amount||''} · ${t.digest}`;
+ const t0=performance.now();cancelAnimationFrame(raf);const loop=now=>{const p=Math.min(1,(now-t0)/3200);draw(bx,1400,t.digest,ref,p,now);raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+function close(){big.classList.remove('on');cancelAnimationFrame(raf)}
+document.getElementById('bx').onclick=close;big.onclick=e=>{if(e.target===big)close()};addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+let pvRef=false;const pv=document.getElementById('pv').getContext('2d'),hx=document.getElementById('hx');
+async function prev(){const h=await toHex(hx.value||TAPS[2].digest);draw(pv,520,h,pvRef);document.getElementById('hh').innerHTML=`<span style="color:var(--bone)">${h}</span><br>App hook: <code>window.addTap({digest, outcome, amount, time, label})</code>`}
+hx.oninput=prev;document.getElementById('bA').onclick=()=>{pvRef=false;bA.className='on';bR.className='';prev()};document.getElementById('bR').onclick=()=>{pvRef=true;bR.className='on r';bA.className='';prev()};prev();
+</script></body></html>
