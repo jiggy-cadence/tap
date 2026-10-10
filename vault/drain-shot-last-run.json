@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-10T20:58:42.791Z",
+  "multisig": "Cy46g9oGdvfubmTAftWWn7Qf1qe8b89z53xwsSxWU9Q",
+  "refused": "destination mismatch: tx=EgHJSMGS1GykRJgmrPMSz2isLheEMy4ArvEJX2cYwDz9 approved=DXpsLbF47a8D31FRm9eibxXFRfL4X96wBdhVfwRSTSzf",
+  "honestTx": "2coKQTw8s5qVCzgyPVfAKxrnzVfNbGyxz8v3CWS9Ga9WfkoY3d5dN91B5fiESvkZgimAQMrqBpMirroXAvYa7zyw",
+  "treasury": 95,
+  "mallory": 0
+}
