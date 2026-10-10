@@ -11,7 +11,12 @@ const ALLOWED_EXTRA = new Set([web3.ComputeBudgetProgram.programId.toBase58()]);
 // intent: { feePayer, source, mint, destination, multisig, amount (string|bigint, base units), decimals }
 // msgBytes: tx.serializeMessage() — the exact bytes the signature covers.
 function inspect(msgBytes, intent, phonePubkey) {
-  const msg = web3.Message.from(Buffer.from(msgBytes));
+  const raw = Buffer.from(msgBytes);
+  if (raw.length && (raw[0] & 0x80)) return { ok: false, why: "versioned (v0) message: lookup tables can hide accounts; legacy only" };
+  const msg = web3.Message.from(raw);
+  // Canonical-bytes rule: sign only bytes that re-encode to exactly themselves. Anything the parser
+  // skipped (trailing bytes, non-minimal encodings) is something we would sign without having read.
+  if (!Buffer.from(msg.serialize()).equals(raw)) return { ok: false, why: "non-canonical message bytes (do not round-trip)" };
   const keys = msg.accountKeys.map(k => k.toBase58());
   if (keys[0] !== intent.feePayer) return { ok: false, why: 'fee payer is not the approved agent' };
   const ixs = msg.instructions.map(ix => ({

@@ -38,5 +38,8 @@ refused('fee payer swap', build([tc()], mallory.publicKey));
 refused('second transfer smuggled in', build([tc(), tc({ dst: evil })]));
 refused('plain Transfer (no mint binding)', build([spl.createTransferInstruction(src, dst, ms, 5_000_000n, [agent.publicKey, phone.publicKey])]));
 refused('extra system transfer appended', build([tc(), web3.SystemProgram.transfer({ fromPubkey: agent.publicKey, toPubkey: evil, lamports: 1 })]));
+refused('honest + trailing bytes (parser differential)', Buffer.concat([honest, Buffer.alloc(64, 7)]));
+refused('durable nonce (signature never expires)', build([web3.SystemProgram.nonceAdvance({ noncePubkey: evil, authorizedPubkey: agent.publicKey }), tc()]));
+refused('v0 message, honest economics', new web3.TransactionMessage({ payerKey: agent.publicKey, recentBlockhash: BH, instructions: [tc()] }).compileToV0Message().serialize());
 refused('garbage bytes', Buffer.from('not a solana message at all, nope'));
 console.log(`${pass}/${pass + fail} pass`); process.exitCode = fail ? 1 : 0;
