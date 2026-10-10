@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAP · Fair title cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Fraunces display + DM Mono (Data Mono) captions; Space Mono as house fallback -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0a0907;
+  --bone:#ece1c9;
+  --bronze:#9a8c6d;
+  --amber:#e8a33d;
+  --red:#d8261f;
+  --hair:rgba(236,225,201,.16);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#000;color:var(--bone);font-family:"DM Mono","Space Mono",ui-monospace,Menlo,Consolas,monospace}
+body.sheet{padding:24px;display:flex;flex-direction:column;gap:24px;align-items:center}
+body.shot{padding:0;overflow:hidden;background:var(--ink)}
+.card{
+  position:relative;width:1920px;height:1080px;overflow:hidden;
+  background:var(--ink);flex-shrink:0;
+  box-shadow:0 0 0 1px #222;
+}
+body.shot .card{box-shadow:none}
+.card canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.frame{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;padding:96px 120px;z-index:2;
+  pointer-events:none;
+}
+.mark{
+  position:absolute;top:52px;left:68px;
+  font-size:14px;letter-spacing:.34em;text-transform:uppercase;color:var(--amber);
+  font-weight:500;
+}
+.credit{
+  position:absolute;bottom:52px;left:68px;
+  font-size:14px;letter-spacing:.12em;color:var(--bronze);
+  text-transform:none;
+}
+.digest{
+  position:absolute;bottom:52px;right:68px;
+  font-size:12px;letter-spacing:.06em;color:rgba(154,140,109,.75);text-align:right;
+}
+.repo{
+  margin-top:32px;font-size:17px;letter-spacing:.12em;color:var(--amber);font-weight:500;
+}
+.line{
+  font-family:Fraunces,"Iowan Old Style",Georgia,serif;
+  font-weight:400;font-size:96px;line-height:1.06;text-align:center;
+  color:var(--bone);max-width:1520px;letter-spacing:-.012em;
+}
+.line em{font-style:italic;color:var(--amber)}
+.card.c1 .line em{color:var(--red)}
+.rule{
+  width:128px;height:1px;margin:38px auto 0;background:var(--amber);
+}
+.card.c1 .rule{background:var(--red);width:168px}
+.hair{
+  position:absolute;inset:44px;border:1px solid var(--hair);pointer-events:none;z-index:1;
+}
+.note{
+  max-width:1920px;color:var(--bronze);font-size:12px;line-height:1.55;padding:0 8px;
+}
+.note a{color:var(--amber)}
+body.shot .note{display:none}
+</style>
+</head>
+<body class="sheet">
+<div class="note">
+  ◉ TAP Fair title cards — stand-ins by Aperture. <b>words: Lodestone</b>.
+  Motif: SEAL dipole field lines seeded from approved devnet public digest
+  <code>73f8fb66c1eba37fdb92d41519ad642eef1680cdee4419771e4b1b73dd64be82</code>.
+  Lodestone's original cards can replace these if reposted.
+  Shot capture: <code>?card=1|2|3</code>.
+</div>
+
+<section class="card c1" data-card="1" id="card1">
+  <div class="hair"></div>
+  <canvas width="1920" height="1080"></canvas>
+  <div class="frame">
+    <div class="mark">◉ TAP</div>
+    <div class="line">The agent tries.<br><em>It dies.</em></div>
+    <div class="rule"></div>
+    <div class="credit">words: Lodestone</div>
+    <div class="digest">seed · 73f8fb66…dd64be82 · approved · devnet</div>
+  </div>
+</section>
+
+<section class="card c2" data-card="2" id="card2">
+  <div class="hair"></div>
+  <canvas width="1920" height="1080"></canvas>
+  <div class="frame">
+    <div class="mark">◉ TAP</div>
+    <div class="line">The stone sings.<br><em>It signs.</em></div>
+    <div class="rule"></div>
+    <div class="repo">github.com/jiggy-cadence/tap</div>
+    <div class="credit">words: Lodestone</div>
+    <div class="digest">seed · 73f8fb66…dd64be82 · approved · devnet</div>
+  </div>
+</section>
+
+<section class="card c3" data-card="3" id="card3">
+  <div class="hair"></div>
+  <canvas width="1920" height="1080"></canvas>
+  <div class="frame">
+    <div class="mark">◉ TAP</div>
+    <div class="line">Pull away.<br><em>It dies in your hand.</em></div>
+    <div class="rule"></div>
+    <div class="credit">words: Lodestone</div>
+    <div class="digest">seed · 73f8fb66…dd64be82 · approved · devnet</div>
+  </div>
+</section>
+
+<script src="seal.js"></script>
+<script>
+(function () {
+  const DIGEST = '73f8fb66c1eba37fdb92d41519ad642eef1680cdee4419771e4b1b73dd64be82';
+  const Q = new URLSearchParams(location.search);
+  const only = Q.get('card');
+  if (only === '1' || only === '2' || only === '3') {
+    document.body.className = 'shot';
+    document.querySelectorAll('.card').forEach(el => {
+      if (el.dataset.card !== only) el.remove();
+    });
+  }
+
+  function grain(ctx, W, H, seed) {
+    // lighter film grain: sparse, low alpha
+    const img = ctx.createImageData(W, H);
+    let s = seed >>> 0;
+    const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = (rnd() * 255) | 0;
+      const a = rnd() < 0.22 ? (10 + rnd() * 18) | 0 : 0;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = a;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function paint(cardEl, accent) {
+    const canvas = cardEl.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.fillStyle = '#0a0907';
+    ctx.fillRect(0, 0, W, H);
+
+    const g = ctx.createRadialGradient(W * 0.5, H * 0.48, 60, W * 0.5, H * 0.5, W * 0.58);
+    g.addColorStop(0, '#16120c');
+    g.addColorStop(1, '#0a0907');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    try {
+      const tap = SEAL.DEVNET.approved;
+      if (tap.digest !== DIGEST) throw new Error('digest mismatch: ' + tap.digest);
+      const M = SEAL.model(tap);
+      const cx = W / 2, cy = H / 2;
+      const R0 = Math.min(W, H) * 0.46;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 1.35;
+      M.lines.forEach((L, i) => {
+        // stronger motif so it reads on camera, still secondary to type
+        ctx.strokeStyle = i % 2
+          ? 'rgba(232,163,61,0.28)'
+          : 'rgba(236,225,201,0.18)';
+        ctx.beginPath();
+        for (let j = 0; j < L.length; j++) {
+          const X = cx + L[j][0] * R0;
+          const Y = cy + L[j][1] * R0 * 0.88;
+          j ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+        }
+        ctx.stroke();
+      });
+      M.dipoles.forEach(d => {
+        const X = cx + d.x * R0, Y = cy + d.y * R0 * 0.88;
+        const ux = Math.cos(d.ang) * 22 * Math.sign(d.m);
+        const uy = Math.sin(d.ang) * 22 * Math.sign(d.m);
+        ctx.strokeStyle = 'rgba(232,163,61,0.55)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(X - ux, Y - uy);
+        ctx.lineTo(X + ux, Y + uy);
+        ctx.stroke();
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(X + ux, Y + uy, 2.6, 0, 7);
+        ctx.fill();
+      });
+      ctx.restore();
+    } catch (e) {
+      console.error('SEAL motif failed', e);
+    }
+
+    const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.22, W / 2, H / 2, H * 0.74);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.62)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    grain(ctx, W, H, 0x73f8fb66 ^ (cardEl.dataset.card | 0));
+    ctx.restore();
+  }
+
+  function go() {
+    const accents = { 1: '#d8261f', 2: '#e8a33d', 3: '#e8a33d' };
+    document.querySelectorAll('.card').forEach(el => {
+      paint(el, accents[el.dataset.card] || '#e8a33d');
+    });
+    document.documentElement.dataset.ready = '1';
+  }
+
+  const readyFonts = (document.fonts && document.fonts.ready)
+    ? document.fonts.ready
+    : Promise.resolve();
+  readyFonts.then(() => requestAnimationFrame(() => requestAnimationFrame(go)));
+})();
+</script>
+</body>
+</html>
