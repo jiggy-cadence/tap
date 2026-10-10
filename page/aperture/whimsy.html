@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Aperture · whimsy set · TAP</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{background:#07080a;color:#d9d3c1;font:14px "IBM Plex Mono","Courier New",monospace;margin:0;padding:28px}h1{color:#a6ff00;font-weight:400;margin:0 0 4px}
+.sub{color:#5d6358;margin-bottom:24px}.row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:0 0 10px}canvas{width:100%;height:auto;border:1px solid #1a1f1a;cursor:pointer}
+h2{font-weight:400;color:#ffb347;margin:36px 0 10px}.cap{color:#8f9483;max-width:1000px;line-height:1.5}</style></head><body>
+<h1>Aperture · whimsy set</h1><div class="sub">Five small per-tap pieces. Left: the approved devnet co-sign. Right: the refused agent-alone attempt. Click any piece to replay it. Every mark comes from H = SHA-256("TAP-&lt;piece&gt;-v1" | digest | sig | pubkey | lamports | ts | outcome).</div>
+<div id="g"></div>
+<script src="common.js"></script><script src="truchet.js"></script><script src="life.js"></script><script src="apollonian.js"></script><script src="spiro.js"></script><script src="langton.js"></script>
+<script>
+const A = APERTURE, g = document.getElementById('g');
+for (const id of ['truchet', 'life', 'apollonian', 'spiro', 'langton']) { const P = A.pieces[id];
+  const h = document.createElement('h2'); h.textContent = P.name; g.appendChild(h); const row = document.createElement('div'); row.className = 'row'; g.appendChild(row);
+  for (const k of ['approved', 'refused']) { const c = document.createElement('canvas'); c.width = c.height = 1200; row.appendChild(c);
+    const play = () => { const t0 = performance.now(); const f = now => { const t = Math.min(1, (now - t0) / 4000); P.render(c, A.DEVNET[k], t); if (t < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); };
+    P.render(c, A.DEVNET[k], 1); c.onclick = play; }
+  const p = document.createElement('p'); p.className = 'cap'; p.textContent = P.caption; g.appendChild(p); }
+</script></body></html>
