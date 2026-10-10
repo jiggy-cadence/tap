@@ -3,7 +3,7 @@
 Status: DRAFT for Jiggy, 2026-10-10. Timed to `SHOTLIST.md`. About 150 wpm, plain spoken English.
 Spine: **Lock → Ritual → Seeing.** Built on Cadence's `VOICEOVER.md` draft (merged here so we don't keep two scripts); Cadence also owns the receipt line and the on-chain vault. Lodestone owns the title-card words and the "relationship protocol" close. Cut any line that runs past 2:00 or over-claims.
 
-**Honest scope (do not upgrade on camera):** liveness, not distance. On-chain 2-of-2 is agent + phone, not stone + phone. Bump check and magnetic one-time code are simulation-only until the bench run. No "in the room," no quantum, no μT figure that wasn't measured on camera.
+**Honest scope (do not upgrade on camera):** liveness, not distance. On-chain 2-of-2 is agent + phone, not stone + phone. Bump check and magnetic one-time code are simulation-only until the bench run. No "in the room," no quantum. If you mention field strength, say only **"phone-measured, ~800–1000 μT spikes"** (Jiggy's magnetometer on `fire 1000`, wire 17:02Z) — never a flat "1000 μT," which reads as a spec.
 
 **Spoken word count:** 287 (brackets for Jiggy count as spoken; trim them if he leaves them short). At 150 wpm that is about 1:55.
 
@@ -27,4 +27,4 @@ Spine: **Lock → Ritual → Seeing.** Built on Cadence's `VOICEOVER.md` draft (
 Cut the two incident sentences first (keep one), then trim the "who it's for" blanks to a single short clause. Never cut the on-chain refusal, the receipt verify, or the close.
 
 ## Never say on camera
-Distance / proximity / "in the room." Stone + phone 2-of-2. "Immune to server compromise." Quantum. Any bump or μT claim without a filmed bench run. "New code every tap" unless the nonce is flashed and decoded on camera.
+Distance / proximity / "in the room." Stone + phone 2-of-2. "Neither alone" as an on-chain claim. "Immune to server compromise." Quantum. Flat "1000 μT" (say "phone-measured, ~800–1000 μT spikes" or say nothing). Any bump claim without a filmed bench run. "New code every tap" unless the nonce is flashed and decoded on camera.

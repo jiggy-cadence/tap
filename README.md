@@ -13,6 +13,7 @@ Colosseum World's Fair 2026 submission. Built during the entry period (Sep 14 �
 - `stone/` — Node signer + policy (allowance, domain tag, Solana message-byte signing, plain-English decoder), simulated magnet-nonce channel, tests, `demo.js`, `squads-devnet.js` (devnet only).
 - `firmware/` — `solenoid_blink.ino` (the sketch running on the stone now, with `fire`; Lodestone) and `nonce_pulse.ino` (magnet one-time code, NOT yet bench-tested).
 - `tap-page/` — local demo page.
+- `expo/` — drop-ins for Lodestone's Expo app (`useStoredIntent.js`, `cosign-adapter.js`). **For Lodestone to wire; untested in Expo Go.**
 
 ## Run
 ```

@@ -52,7 +52,10 @@ Wire TEXT-ONLY poll after `2026-10-10T21:00:00Z` found **no** Cadence message ca
 - Memo: `TAP1:512900a78fba9a950e599ead1dcdbbda5b703ba0ad8ac9ceed0db521c9c16f59` = sha256("TAP1|" + canon(intent rebuilt from the executed TransferChecked: 5000000 base units, 6 decimals, multisig 7YyQ…KvPL))
 - `node vault/verify-receipt.js <sig> devnet` → ✓ RECEIPT VERIFIED (output in `rJRY77eU.verify.txt`); browser port `page/verify-receipt-browser.js` agrees live and on the saved JSON.
 - Public v1 digest (fallback): `24eabad60c5fb66c691ec9e55172f4bc4c64d98e5a6e1dd6df1ffbf4ee5460d5`
-- Canary `2coKQT…`: no full signature found in the repo, so it was not verified.
+- Canary (Cadence drain-shot honest land, wire 20:58Z; full sig now in repo): `2coKQTw8s5qVCzgyPVfAKxrnzVfNbGyxz8v3CWS9Ga9WfkoY3d5dN91B5fiESvkZgimAQMrqBpMirroXAvYa7zyw`
+  - Verified 2026-10-10 ~16:45 CT via `getTransaction` on `api.devnet.solana.com`: **Success**, slot **509668468**, blockTime **1791665922** (2026-10-10 15:58:42 CT), fee **10000**, err null.
+  - Token balances match Cadence's report: treasury 100→95, bob 0→5 (6 decimals). No TAP1 memo (pre-receipt canary; `verify-receipt.js` correctly fails with "0 memo + 1 transfer").
+  - Frozen JSON: `2coKQTw8.json` (4031 bytes, sha256 `9812fb85b85f8afc617ef77edbe50509c1c8ac6b2c96fc7dc6d25188f27675ad`). Explorer: https://explorer.solana.com/tx/2coKQTw8s5qVCzgyPVfAKxrnzVfNbGyxz8v3CWS9Ga9WfkoY3d5dN91B5fiESvkZgimAQMrqBpMirroXAvYa7zyw?cluster=devnet
 - Scope: the receipt proves the phone signed this intent, not that a human was at the stone.
 
 | File | Bytes | SHA-256 |
