@@ -75,3 +75,16 @@ Honest limits of the bump link:
 
 ## vault/ (Cadence)
 `vault/` is Cadence's tap-vault: the code that produced the devnet evidence. The two devnet transactions, [2h859F…](https://explorer.solana.com/tx/2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD?cluster=devnet) (agent alone, refused) and [2ik5wV…](https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet) (ceremony, agent + phone co-sign), came from `vault/e2e-devnet.js`. `stone/signer.js` is the demo stand-in used by the local demo, not the code behind those transactions. Tests: `cd vault && npm install && npm test` (includes `cosign.test.js`). Runtime keys go to `vault/devnet-keys.json`, which is git-ignored.
+
+## Don't trust us: verify a tap yourself
+
+Every approved transfer carries a **tap receipt** in its memo: `TAP1:` + SHA-256(`"TAP1|"` + canonical JSON of the approved intent). The phone co-signs only if the memo is exactly the receipt for the intent it stored. A forged, free-text, duplicate or (when required) missing memo is refused (`vault/cosign.test.js`).
+
+```
+cd vault && npm install
+node verify-receipt.js rJRY77eUMuy4bPkZ8sWhRQBqDDfokhsUyhuE14CBHeTZz87WiYehvGg7FkavguYUDdkHD7gKMyJaBXyXNRtfALT
+```
+
+It reads the landed transaction from devnet, rebuilds the intent from what **actually executed** (the TransferChecked accounts, amount, decimals and fee payer), recomputes the receipt and compares it with the memo in that same transaction. No TAP server is involved. Canary: on a transaction without a receipt (for example `2coKQT…`) it fails.
+
+Scope: the receipt proves the co-signers signed *this* intent. Presence at the stone is the ceremony's claim, not the memo's.
