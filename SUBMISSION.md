@@ -11,8 +11,8 @@ Attack this file. Any claim that has no file, test, or tx next to it gets cut.
 |---|---|---|---|---|
 | 1 | The agent alone can't move vault funds on devnet. | tx `2h859F33…` (slot 509637420), `evidence/2h859F33.json` + `.png` | `sha256sum evidence/*` matches `evidence/README.md`. On-chain result is `MissingRequiredSignature` | ✅ real devnet |
 | 2 | Agent + phone co-sign (after the tap) lands. | tx `2ik5wVv3…` (slot 509637436), `evidence/2ik5wVv3.json` + `.png` | same as #1 | ✅ real devnet |
-| 3 | Those txs came from open code in the repo. | `vault/devnet-2of2.js`, `vault/e2e-devnet.js` | `cd vault && npm test` → 86 pass (24+22+9+8+9+14) | ✅ |
-| 4 | The phone only co-signs what it decodes from the real tx bytes, compared against the intent it stored during the ceremony. | `vault/cosign.js`, `vault/cosign.test.js` (14), `vault/drain-shot-last-run.json` | `node vault/cosign.test.js` | ✅ the code. ⚠️ the app must compare against its *stored* intent only (Lodestone's rule) |
+| 3 | Those txs came from open code in the repo. | `vault/devnet-2of2.js`, `vault/e2e-devnet.js` | `cd vault && npm test` → 89 pass (24+22+9+8+9+17) | ✅ |
+| 4 | The phone only co-signs what it decodes from the real tx bytes, compared against the intent it stored during the ceremony. | `vault/cosign.js`, `vault/cosign.test.js` (17; canonical-bytes rule added by Cadence: a trailing-bytes parser differential was being signed, now refused), `vault/drain-shot-last-run.json` | `node vault/cosign.test.js` | ✅ the code. ⚠️ the app must compare against its *stored* intent only (Lodestone's rule) |
 | 5 | Tampered drain (5 → 100 to Mallory) is refused by the phone. | `vault/devnet-drain-shot.js`, `drain-shot-last-run.json` | `node devnet-drain-shot.js` (devnet, about 40 s) | ✅ phone-side refusal. ⚠️ the agent-alone rejection in that run is an RPC preflight, **not** on-chain. Say "rejected", never "refused on-chain" |
 | 6 | Rolling 24 h allowance: 0.25 SOL/24 h, auto-approve ≤ 0.10, fees count, no midnight reset. | `stone/policy.js`, `stone/policy.json`, `stone/tap2.test.js` (5,000-request property test) | `node stone/tap2.test.js` | ✅ simulated agent, demo key |
 | 7 | Signer binds the full payment (nothing can be swapped), single-use receipts, domain tag (app, cluster, stone). | `stone/signer.js`, `stone/solmsg.js`, `stone/canon.js`, `stone/tap.test.js` (21), `stone/tap3.test.js` (9) | `node stone/tap*.test.js` | ✅ signer hole confirmed closed on live code by Lodestone (wire, 2026-10-10) |
@@ -23,7 +23,7 @@ Attack this file. Any claim that has no file, test, or tx next to it gets cut.
 | 12 | Every tap has recomputable art; the devnet cards use public on-chain data only. | `page/verify.html`, `page/verify.js`, `page/seal.html`, `page/seal.test.js` (17), `page/aperture/*` (38 tests) | open `page/verify.html` and paste a signature. Digest = SHA-256(sig‖slot‖blockTime‖fee), matches `evidence/README.md` | ✅ art is display-only and never gates signing |
 | 13 | Art suite and thesis. | `page/suite.html`, `page/thesis.html`, `ART-THESIS.md`, `page/taps.html` (VOID.LIFE by Lodestone, `page/art.js`) | open in a browser | ✅ the void movement uses Cadence's closing line |
 | 14 | Title cards. | `page/title-cards.html`, `page/title-cards/card{1,2,3}.png` | open | ✅ stand-ins (words: Lodestone) |
-| 15 | Shot list with each beat mapped to a command. | `SHOTLIST.md` | read | ✅ |
+| 15 | Shot list with each beat mapped to a command, plus the voiceover draft. | `SHOTLIST.md`, `VOICEOVER.md` | read | ✅ |
 
 ## 2. Honest-scope lines (must appear as written, never upgraded)
 - **Liveness, not distance.** TAP proves someone was live at the stone for this exact tx. The magnet can be relayed. UWB or multi-sensor distance checks are roadmap.
