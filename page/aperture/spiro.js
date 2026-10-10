@@ -42,6 +42,6 @@ function render(canvas, tap, t = 1) { const ctx = A.ctxOf(canvas), W = A.sizeOf(
   label(ctx, 'laps = r / gcd(R, r); petals = R / gcd(R, r); d ≈ (R−r) so petals fold deep', x0, y + 54 * k, { size: 13 * k, color: P.dim, italic: true });
   return M; }
 const caption = 'How this was made: a wheel of radius r rolls inside a ring of radius R with the pen at distance d. R comes from lamports (30 + lamports mod 71), r from the timestamp (7 + ts mod 53), d = (R − r) · (0.85 + 0.50 · u) from H = SHA-256("TAP-SPIRO-v1" | tap). Sitting near R − r, d folds the curve into deep petals (and through-center loops when d > R − r). The curve closes after exactly r / gcd(R, r) laps. Approved taps draw them all and the pen lands home; refused taps lift the pen one lap early, and the red dash shows the gap.';
-const Pc = { name: 'Spirograph of Lamports', id: 'spiro', model, render, caption, pt }; A.pieces.spiro = Pc;
+const Pc = { name: 'Spirograph of Lamports', id: 'spiro', model, render: A.withOutcome(render), caption, pt }; A.pieces.spiro = Pc;
 if (typeof module !== 'undefined' && module.exports) module.exports = Pc; else root.APERTURE_SPIRO = Pc;
 })(typeof window !== 'undefined' ? window : globalThis);

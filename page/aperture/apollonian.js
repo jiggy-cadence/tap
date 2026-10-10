@@ -52,6 +52,6 @@ function render(canvas, tap, t = 1) { const ctx = A.ctxOf(canvas), W = A.sizeOf(
   label(ctx, 'outer circle has curvature ' + M.root[0] + ' (it wraps the others) · rotated ' + (M.rot * 180 / Math.PI).toFixed(1) + '°', x0, y + 54 * k, { size: 13 * k, color: P.dim, italic: true });
   return M; }
 const caption = 'How this was made: H = SHA-256("TAP-APOLLONIAN-v1" | tap) picks one of the primitive integral root quadruples (-n, a, b, c) with n ≤ 12. Every other circle comes from the Descartes reflection k\' = 2(k₁+k₂+k₃) − k (and the complex version for centres), so every printed curvature is an exact integer. The hash also picks a rotation and a residue class that glows. A refused tap leaves one big circle (hash-picked) empty, outlined in red.';
-const Pc = { name: 'Apollonian Seal', id: 'apollonian', model, render, caption, ROOTS }; A.pieces.apollonian = Pc;
+const Pc = { name: 'Apollonian Seal', id: 'apollonian', model, render: A.withOutcome(render), caption, ROOTS }; A.pieces.apollonian = Pc;
 if (typeof module !== 'undefined' && module.exports) module.exports = Pc; else root.APERTURE_APOLLONIAN = Pc;
 })(typeof window !== 'undefined' ? window : globalThis);

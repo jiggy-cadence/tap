@@ -1,8 +1,8 @@
 /* SEAL — Aperture's per-tap art engine for TAP. Complements Lodestone's VOID.LIFE (art.js) and Iris.
  * Every mark is computed from real tap data; nothing is decorative noise.
  *   inputs : 32-byte intent digest, 64-byte Ed25519 signature (or Solana tx sig), 32-byte pubkey,
- *            lamports, unix timestamp, outcome, kick nonce
- *   H      : SHA-256("TAP-SEAL-v1" | digest | sig | pubkey | u64le lamports | u64le ts | outcome) — the seal hash
+ *            lamports, unix timestamp, outcome (approved/refused/unanswered), kick nonce
+ *   H      : SHA-256("TAP-SEAL-v1" | digest | sig | pubkey | u64le lamports | u64le ts | ok) — ok = 1 approved, 0 refused, 2 unanswered — the seal hash
  * Layers:
  *   1. SHA-256 tapestry  — the real 64 compression rounds (state a..h, 256 bits/round) of H's final block, woven as an annulus.
  *   2. Toy elliptic curve — every point of y^2 = x^3 + ax + b over F_1021 (a,b from the digest) as a starfield,
@@ -90,28 +90,29 @@ function kickSchedule(nonce, o = { kicks: 6, minGapMs: 200, maxGapMs: 700 }) {
 // ---------- model ----------
 function model(tap) {
   const digest = bytesOf(tap.digest, 32), sig = bytesOf(tap.sig, 64), pub = bytesOf(tap.pubkey, 32);
-  const lamports = BigInt(tap.lamports || 0), ts = BigInt(tap.ts || 0), refused = tap.outcome === 'refused';
+  const lamports = BigInt(tap.lamports || 0), ts = BigInt(tap.ts || 0), refused = tap.outcome !== 'approved' && tap.outcome !== 'unanswered', unanswered = tap.outcome === 'unanswered', ob = refused ? 0 : unanswered ? 2 : 1;
   const nonceSrc = tap.nonce != null ? 'given' : 'digest[0..4] (demo: real nonce not logged)';
   const nonce = tap.nonce != null ? tap.nonce >>> 0 : ((digest[0] << 24 | digest[1] << 16 | digest[2] << 8 | digest[3]) >>> 0);
-  const input = cat(utf8('TAP-SEAL-v1'), digest, sig, pub, u64le(lamports), u64le(ts), Uint8Array.of(refused ? 0 : 1));
+  const input = cat(utf8('TAP-SEAL-v1'), digest, sig, pub, u64le(lamports), u64le(ts), Uint8Array.of(ob));
   const tr = {}; const H = sha256(input, tr);
   const C = curve(digest); const ks = Array.from(sig.slice(0, 16), b => b || 1);
   const walk = [C.G]; let Q = C.G, S = 0; for (const k of ks) { Q = C.add(Q, C.mul(k, C.G)); S += k; walk.push(Q); }
-  const close = (C.ord - (S % C.ord)) % C.ord; const closed = refused ? null : C.add(Q, C.mul(close, C.G));
+  const close = (C.ord - (S % C.ord)) % C.ord; const closed = (refused || unanswered) ? null : C.add(Q, C.mul(close, C.G));
   const D = dipoles(pub), lines = [];
   D.forEach((d, i) => { const nL = 18 + (pub[20 + i] % 9); for (let j = 0; j < nL; j++) { const th = 2 * Math.PI * (j + 0.5) / nL + d.ang; const sx = d.x + 0.035 * Math.cos(th), sy = d.y + 0.035 * Math.sin(th); lines.push(rk4Line(D, sx, sy, d.m > 0 ? 1 : -1)); } });
   const kicks = kickSchedule(nonce);
-  return { tap: { label: tap.label || '', outcome: refused ? 'refused' : 'approved', net: tap.net || '' }, refused,
+  return { tap: { label: tap.label || '', outcome: refused ? 'refused' : unanswered ? 'unanswered' : 'approved', net: tap.net || '' }, refused, unanswered, outcomeByte: ob,
     digestHex: hex(digest), sigHex: hex(sig), pubHex: hex(pub), lamports: lamports.toString(), ts: ts.toString(), nonce, nonceSrc,
     inputHex: hex(input), H: hex(H), blocks: tr.blocks, rounds: tr.rounds,
     curve: { p: C.p, a: C.a, b: C.b, n: C.pts.length + 1, G: C.G, ord: C.ord, pts: C.pts, ks, S, close, walk, closed },
     dipoles: D, lines, kicks, tearAt: H[0] / 256 };
 }
 // ---------- render ----------
-const COL = { bg: '#030504', g: '#a6ff00', m: '#00ffa6', amber: '#ffb347', red: '#ff2a2a', dim: '#3c5a3a', bone: '#d8f5c8' };
+const UNA_WALK = 0.6; // unanswered: walk drawn to 60%, then dims
+const COL = { bg: '#030504', g: '#a6ff00', m: '#00ffa6', amber: '#ffb347', red: '#ff2a2a', dim: '#3c5a3a', bone: '#d8f5c8', ash: '#7d8a80' };
 const ease = x => x < 0 ? 0 : x > 1 ? 1 : 1 - Math.pow(1 - x, 3); const seg = (p, a, b) => ease((p - a) / (b - a));
 function render(ctx, M, W, p = 1) {
-  const cx = W / 2, cy = W / 2, s = W / 1600, ref = M.refused, ACC = ref ? COL.red : COL.amber;
+  const cx = W / 2, cy = W / 2, s = W / 1600, ref = M.refused, una = M.unanswered, ACC = ref ? COL.red : una ? COL.ash : COL.amber;
   ctx.save(); ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, W);
   const vg = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * .72); vg.addColorStop(0, '#08140c'); vg.addColorStop(1, '#010201'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, W);
   ctx.lineCap = 'round';
@@ -128,7 +129,7 @@ function render(ctx, M, W, p = 1) {
   const ps = seg(p, .05, .4); ctx.globalCompositeOperation = 'lighter';
   C.pts.forEach((q, i) => { if (i / C.pts.length > ps) return; const [X, Y] = map(q); const on = (q[0] * 7 + q[1]) % 5 === 0; ctx.fillStyle = on ? 'rgba(216,245,200,.75)' : 'rgba(166,255,0,.42)'; ctx.fillRect(X - .9 * s, Y - .9 * s, (on ? 2.2 : 1.6) * s, (on ? 2.2 : 1.6) * s); });
   ctx.strokeStyle = 'rgba(166,255,0,.10)'; ctx.lineWidth = s; ctx.strokeRect(cx - half, cy - half, 2 * half, 2 * half);
-  const pw = seg(p, .35, .9), nh = C.walk.length - 1, upto = pw * nh;
+  const pw = seg(p, .35, .9), nh = C.walk.length - 1, upto = pw * nh * (una ? UNA_WALK : 1);
   for (let i = 0; i < nh; i++) { if (i >= upto) break; const A = C.walk[i], Bq = C.walk[i + 1]; if (!A || !Bq) continue; const [x1, y1] = map(A), [x2, y2] = map(Bq);
     const f = Math.min(1, upto - i), xe = x1 + (x2 - x1) * f, ye = y1 + (y2 - y1) * f;
     if (ref && i === nh - 1) { ctx.setLineDash([3 * s, 6 * s]); }
@@ -136,7 +137,8 @@ function render(ctx, M, W, p = 1) {
     ctx.fillStyle = COL.bone; ctx.beginPath(); ctx.arc(x1, y1, 2.4 * s, 0, 7); ctx.fill(); }
   if (p > .9) { const [gx, gy] = map(C.G); ctx.strokeStyle = ACC; ctx.lineWidth = 1.5 * s; ctx.beginPath(); ctx.arc(gx, gy, 9 * s, 0, 7); ctx.stroke();
     const last = C.walk[C.walk.length - 1]; if (last) { const [lx, ly] = map(last);
-      if (!ref) { const f = seg(p, .9, 1); ctx.strokeStyle = COL.amber; ctx.lineWidth = 2.2 * s; ctx.setLineDash([2 * s, 5 * s]); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.quadraticCurveTo(cx, cy, lx + (gx - lx) * f, ly + (gy - ly) * f); ctx.stroke(); ctx.setLineDash([]); }
+      if (una) { /* no closing hop, no break: the path just stops */ }
+      else if (!ref) { const f = seg(p, .9, 1); ctx.strokeStyle = COL.amber; ctx.lineWidth = 2.2 * s; ctx.setLineDash([2 * s, 5 * s]); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.quadraticCurveTo(cx, cy, lx + (gx - lx) * f, ly + (gy - ly) * f); ctx.stroke(); ctx.setLineDash([]); }
       else { ctx.strokeStyle = COL.red; ctx.lineWidth = 2 * s; ctx.beginPath(); ctx.moveTo(lx - 8 * s, ly - 8 * s); ctx.lineTo(lx + 8 * s, ly + 8 * s); ctx.moveTo(lx + 8 * s, ly - 8 * s); ctx.lineTo(lx - 8 * s, ly + 8 * s); ctx.stroke(); } } }
   ctx.restore();
   // 1. SHA-256 tapestry annulus: 64 rounds (radial) x 256 state bits (angular)
@@ -171,19 +173,20 @@ function render(ctx, M, W, p = 1) {
   ctx.fillText('SEAL // TAP', 48 * s, 60 * s); ctx.fillStyle = ACC; ctx.fillText(M.tap.outcome.toUpperCase() + (M.tap.net ? ' · ' + M.tap.net : ''), 48 * s, 82 * s);
   ctx.fillStyle = 'rgba(216,245,200,.55)'; ctx.font = `${11 * s}px ui-monospace,Menlo,monospace`; ctx.fillText(M.tap.label.slice(0, 40), 48 * s, 102 * s);
   ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(216,245,200,.5)';
-  [`toy curve y²=x³+${C.a}x+${C.b} mod ${C.p}`, `#E=${C.n}  G=(${C.G[0]},${C.G[1]})  ord ${C.ord}`, `walk Σk=${C.S}  close=${ref ? '—' : C.close + '·G'}`, 'not Ed25519 (2^255-19)'].forEach((l, i) => ctx.fillText(l, W - 48 * s, (60 + 18 * i) * s));
+  [`toy curve y²=x³+${C.a}x+${C.b} mod ${C.p}`, `#E=${C.n}  G=(${C.G[0]},${C.G[1]})  ord ${C.ord}`, `walk Σk=${C.S}  close=${ref ? '—' : una ? 'never asked' : C.close + '·G'}`, 'not Ed25519 (2^255-19)'].forEach((l, i) => ctx.fillText(l, W - 48 * s, (60 + 18 * i) * s));
   if (p > .85) { ctx.textAlign = 'left'; ctx.font = `${10.5 * s}px ui-monospace,Menlo,monospace`; const V = verifyLines(M), y0 = W - (40 + 16 * V.length) * s;
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(36 * s, y0 - 20 * s, 560 * s, (16 * V.length + 26) * s); ctx.strokeStyle = 'rgba(166,255,0,.3)'; ctx.strokeRect(36 * s, y0 - 20 * s, 560 * s, (16 * V.length + 26) * s);
     V.forEach((l, i) => { ctx.fillStyle = i === 0 ? COL.g : i === V.length - 1 ? ACC : 'rgba(216,245,200,.7)'; ctx.fillText(l, 48 * s, y0 + 16 * i * s); }); }
   ctx.textAlign = 'right'; ctx.font = `${10 * s}px ui-monospace,Menlo,monospace`; ctx.fillStyle = 'rgba(216,245,200,.35)';
   ['SEAL by Aperture · rings: SHA-256 rounds 0→63 outward', 'stars: toy curve · lines: RK4 dipoles (pubkey)', 'pulses: kick schedule · outer text: signature hex'].forEach((l, i) => ctx.fillText(l, W - 48 * s, W - (76 - 16 * i) * s));
+  if (una) { ctx.save(); try { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, W); } catch (e) {} ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.2 + 0.55 * p; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, W); ctx.restore(); }
   // CRT: bloom + scanlines
   try { if (ctx.filter !== undefined && ctx.canvas) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .35; ctx.filter = `blur(${7 * s}px)`; ctx.drawImage(ctx.canvas, 0, 0); ctx.restore(); } } catch (e) {}
   ctx.fillStyle = 'rgba(0,0,0,.22)'; for (let y = 0; y < W; y += 3 * s) ctx.fillRect(0, y, W, Math.max(1, s));
   ctx.restore();
 }
 function verifyLines(M) { const sh = h => h.slice(0, 20) + '…' + h.slice(-8);
-  return ['VERIFY YOURSELF  H = sha256(input)', `"TAP-SEAL-v1" | digest | sig | pubkey | u64le lam | u64le ts | ok`,
+  return ['VERIFY YOURSELF  H = sha256(input)', `"TAP-SEAL-v1" | digest | sig | pubkey | u64le lam | u64le ts | ok(1/0/2)`,
     `digest   ${sh(M.digestHex)}`, `sig      ${sh(M.sigHex)}`, `pubkey   ${sh(M.pubHex)}`, `lamports ${M.lamports}   ts ${M.ts}`,
     `nonce    ${M.nonce}  (${M.nonceSrc})`, `kicks    ${M.kicks.join(' ')} ms`, `H        ${M.H}`]; }
 function animate(canvas, tap, { ms = 3000 } = {}) { const M = model(tap), ctx = canvas.getContext('2d'), t0 = performance.now(); let id = 0, stop = false;
@@ -195,7 +198,9 @@ const DEVNET = {
   approved: { label: 'ceremony co-sign — landed on devnet', outcome: 'approved', net: 'devnet', digest: 'aacb5069f4ddf13d6786d243542090507b90f954f949fe4e46946677490550ab',
     sig: '2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658488 },
   refused: { label: 'agent alone — MissingRequiredSignature', outcome: 'refused', net: 'devnet', digest: 'da47402f9c00d34530625325ac8f36a49fedc36bd7c3ca38d751b198e2fcb452',
-    sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 5000, ts: 1791658484 } };
+    sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 5000, ts: 1791658484 },
+  // DEMO, not a transaction: an unanswered request never produces one. sig = 64 zero bytes (nobody signed).
+  unanswered: { label: 'demo: request never tapped (no tx exists)', outcome: 'unanswered', net: 'demo', digest: '5ad7a2a1c1e0c9f4e1b7c3d2a8f60e9b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f', sig: '0'.repeat(128), pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658600 } };
 const SEAL = { model, render, animate, still, verifyLines, sha256, curve, kickSchedule, b58decode, hex, DEVNET, version: 'seal-v1' };
 if (typeof module !== 'undefined' && module.exports) module.exports = SEAL; else root.SEAL = SEAL;
 })(typeof window !== 'undefined' ? window : globalThis);

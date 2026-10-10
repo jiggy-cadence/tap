@@ -38,6 +38,6 @@ function render(canvas, tap, t = 1) { const ctx = A.ctxOf(canvas), W = A.sizeOf(
   label(ctx, 'on colour c: turn rule[c], repaint c+1, step · amber = early steps, green = late, mint = highway', X, y + 54 * k, { size: 13 * k, color: P.dim, italic: true });
   return M; }
 const caption = 'How this was made: H = SHA-256("TAP-LANGTON-v1" | tap) picks a rule string of 2–6 turns (L/R) for a multi-colour Langton\'s ant. On colour c it turns rule[c], repaints the cell c+1, and steps. Approved couriers walk 12,000 steps; refused ones, with no signature, walk 3,000. A highway is only claimed if the last 3p moves repeat with real drift, for the smallest such period p ≤ 400.';
-const Pc = { name: "Langton's Courier", id: 'langton', model, render, caption, walk, highway }; A.pieces.langton = Pc;
+const Pc = { name: "Langton's Courier", id: 'langton', model, render: A.withOutcome(render), caption, walk, highway }; A.pieces.langton = Pc;
 if (typeof module !== 'undefined' && module.exports) module.exports = Pc; else root.APERTURE_LANGTON = Pc;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,5 +1,5 @@
 /* Aperture whimsy — shared helpers. Every piece seeds from
- *   H = SHA-256("TAP-<piece>-v1" | digest(32) | sig(64) | pubkey(32) | u64le lamports | u64le ts | outcome(1=approved,0=refused))
+ *   H = SHA-256("TAP-<piece>-v1" | digest(32) | sig(64) | pubkey(32) | u64le lamports | u64le ts | outcome(1=approved,0=refused,2=unanswered))
  * and draws further bytes from the counter stream SHA-256(H | u32be i). No RNG anywhere. MIT, Aperture. */
 (function (root) {
 'use strict';
@@ -28,14 +28,17 @@ const u64le = n => { n = BigInt(n); const o = new Uint8Array(8); for (let i = 0;
 const cat = (...a) => { const o = new Uint8Array(a.reduce((s, x) => s + x.length, 0)); let p = 0; for (const x of a) { o.set(x, p); p += x.length; } return o; };
 const utf8 = s => new TextEncoder().encode(s);
 function seedInput(piece, tap) {
-  return cat(utf8('TAP-' + piece + '-v1'), bytesOf(tap.digest, 32), bytesOf(tap.sig, 64), bytesOf(tap.pubkey, 32), u64le(tap.lamports), u64le(tap.ts), new Uint8Array([tap.outcome === 'approved' ? 1 : 0]));
+  return cat(utf8('TAP-' + piece + '-v1'), bytesOf(tap.digest, 32), bytesOf(tap.sig, 64), bytesOf(tap.pubkey, 32), u64le(tap.lamports), u64le(tap.ts), new Uint8Array([outcomeByte(tap)]));
 }
+/** 1 approved (a decision: yes), 0 refused (a decision: no), 2 unanswered (no decision: nobody tapped). */
+function outcomeByte(tap) { return tap.outcome === 'approved' ? 1 : tap.outcome === 'unanswered' ? 2 : 0; }
+const outcomeOf = tap => ['refused', 'approved', 'unanswered'][outcomeByte(tap)];
 /** Deterministic byte stream: SHA-256(H | u32be counter), concatenated. */
 function stream(H) { let i = 0, buf = new Uint8Array(0), p = 0;
   const next = () => { if (p >= buf.length) { buf = sha256(cat(H, new Uint8Array([i >>> 24, i >>> 16 & 255, i >>> 8 & 255, i & 255]))); i++; p = 0; } return buf[p++]; };
   return { byte: next, bit: (() => { let cur = 0, k = 8; return () => { if (k === 8) { cur = next(); k = 0; } return (cur >> (7 - k++)) & 1; }; })(),
     u16: () => (next() << 8) | next(), unit: () => ((next() << 16) | (next() << 8) | next()) / 16777216 }; }
-function seed(piece, tap) { const input = seedInput(piece, tap), H = sha256(input); return { input, H, Hhex: hex(H), s: stream(H), approved: tap.outcome === 'approved' }; }
+function seed(piece, tap) { const input = seedInput(piece, tap), H = sha256(input); return { input, H, Hhex: hex(H), s: stream(H), approved: tap.outcome === 'approved', unanswered: tap.outcome === 'unanswered', outcome: outcomeOf(tap) }; }
 const PAL = { bg: '#07080a', bg2: '#0d1012', ink: '#d9d3c1', dim: '#5d6358', green: '#a6ff00', mint: '#00ffa6', amber: '#ffb347', ember: '#ff7a1a', red: '#ff3b3b' };
 const MONO = '"IBM Plex Mono","JetBrains Mono","Courier New",monospace';
 /** Hand-drawn-feeling label: tiny deterministic tilt from the text itself. */
@@ -52,17 +55,28 @@ function label(ctx, text, x, y, o = {}) {
 function frame(ctx, W, piece, title, M, tap) {
   const g = ctx.createRadialGradient(W / 2, W * .45, W * .05, W / 2, W / 2, W * .75); g.addColorStop(0, PAL.bg2); g.addColorStop(1, PAL.bg);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, W);
-  const k = W / 1200; label(ctx, title, 48 * k, 70 * k, { size: 30 * k, color: M.approved ? PAL.green : PAL.amber, tilt: .02 });
-  label(ctx, (M.approved ? 'approved tap' : 'refused tap') + ' · ' + tap.lamports + ' lamports · ts ' + tap.ts, 48 * k, 100 * k, { size: 14 * k, color: PAL.dim });
+  const k = W / 1200; label(ctx, title, 48 * k, 70 * k, { size: 30 * k, color: M.approved ? PAL.green : M.unanswered ? PAL.dim : PAL.amber, tilt: .02 });
+  label(ctx, (M.approved ? 'approved tap' : M.unanswered ? 'unanswered tap' : 'refused tap') + ' · ' + tap.lamports + ' lamports · ts ' + tap.ts, 48 * k, 100 * k, { size: 14 * k, color: PAL.dim });
   label(ctx, 'H = SHA-256("TAP-' + piece + '-v1" | tap) = ' + M.Hhex.slice(0, 32) + '…', 48 * k, W - 34 * k, { size: 12 * k, color: PAL.dim, tilt: 0 });
-  if (!M.approved) { ctx.strokeStyle = PAL.red; ctx.lineWidth = 1.2 * k; ctx.strokeRect(20 * k, 20 * k, W - 40 * k, W - 40 * k); }
+  if (!M.approved && !M.unanswered) { ctx.strokeStyle = PAL.red; ctx.lineWidth = 1.2 * k; ctx.strokeRect(20 * k, 20 * k, W - 40 * k, W - 40 * k); }
 }
+/** Unanswered: a request nobody tapped. The piece freezes partway (its path neither closes nor breaks),
+ *  loses its colour, and dims as t runs 0→1. Approved/refused renders are untouched. Deterministic. */
+const UNANSWERED_FREEZE = 0.45;
+function veil(ctx, W, t) { t = Math.max(0, Math.min(1, t)); ctx.save();
+  try { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, W); } catch (e) {}
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.25 + 0.6 * t; ctx.fillStyle = PAL.bg; ctx.fillRect(0, 0, W, W); ctx.restore();
+  label(ctx, 'unanswered · nobody tapped · fading', W / 2, W * 0.52, { size: 18 * W / 1200, color: PAL.dim, align: 'center', alpha: 1 - 0.5 * t }); }
+function withOutcome(render) { return function (canvas, tap, t = 1) { if (!tap || tap.outcome !== 'unanswered') return render(canvas, tap, t);
+  render(canvas, tap, Math.min(t, UNANSWERED_FREEZE)); veil(ctxOf(canvas), sizeOf(canvas), t); }; }
 const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return Math.abs(a); };
 const DEVNET = {
   approved: { outcome: 'approved', digest: 'aacb5069f4ddf13d6786d243542090507b90f954f949fe4e46946677490550ab', sig: '2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658488 },
-  refused: { outcome: 'refused', digest: 'da47402f9c00d34530625325ac8f36a49fedc36bd7c3ca38d751b198e2fcb452', sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 5000, ts: 1791658484 } };
-const ctxOf = c => (c && c.getContext) ? c.getContext('2d') : c;
-const sizeOf = c => (c && c.width) || 1200;
-const A = { sha256, hex, unhex, b58decode, bytesOf, u64le, cat, utf8, seedInput, seed, stream, PAL, MONO, label, frame, gcd, DEVNET, ctxOf, sizeOf, pieces: {} };
+  refused: { outcome: 'refused', digest: 'da47402f9c00d34530625325ac8f36a49fedc36bd7c3ca38d751b198e2fcb452', sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 5000, ts: 1791658484 },
+  // DEMO, not a transaction: an unanswered request never produces one. sig = 64 zero bytes (nobody signed).
+  unanswered: { outcome: 'unanswered', label: 'demo: request never tapped (no tx exists)', digest: '5ad7a2a1c1e0c9f4e1b7c3d2a8f60e9b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f', sig: '0'.repeat(128), pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658600 } };
+function ctxOf(c) { return (c && c.getContext) ? c.getContext('2d') : c; }
+function sizeOf(c) { return (c && c.width) || 1200; }
+const A = { sha256, hex, unhex, b58decode, bytesOf, u64le, cat, utf8, seedInput, seed, stream, PAL, MONO, label, frame, gcd, outcomeByte, outcomeOf, veil, withOutcome, UNANSWERED_FREEZE, DEVNET, ctxOf, sizeOf, pieces: {} };
 if (typeof module !== 'undefined' && module.exports) module.exports = A; else root.APERTURE = A;
 })(typeof window !== 'undefined' ? window : globalThis);

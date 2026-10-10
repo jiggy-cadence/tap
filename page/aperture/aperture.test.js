@@ -29,3 +29,14 @@ t('spiro: curve closes after exactly r/gcd laps and not before', () => { const M
 t('langton: classic RL highway found at period 104', () => { const w = P.langton.walk('RL', 12000), h = P.langton.highway(w.tr); assert.strictEqual(h.p, 104); assert(h.start > 9000 && h.start < 10500); });
 t('no Math.random in any piece', () => { const fs = require('fs'); for (const f of ['common', ...ids]) assert(!/Math\.random/.test(fs.readFileSync(__dirname + '/' + f + '.js', 'utf8'))); });
 console.log(n + ' aperture whimsy tests pass');
+
+for (const id of ids) t(id + '/unanswered: H uses outcome byte 2, deterministic, frozen partway + veiled, no red frame', () => { const u = A.DEVNET.unanswered, M = P[id].model(u);
+  const inp = Buffer.concat([Buffer.from('TAP-' + PIECE[id] + '-v1'), Buffer.from(u.digest, 'hex'), Buffer.alloc(64), Buffer.from(A.b58decode(u.pubkey)),
+    (b => (b.writeBigUInt64LE(BigInt(u.lamports)), b))(Buffer.alloc(8)), (b => (b.writeBigUInt64LE(BigInt(u.ts)), b))(Buffer.alloc(8)), Buffer.from([2])]);
+  assert.strictEqual(M.Hhex, crypto.createHash('sha256').update(inp).digest('hex'));
+  assert.strictEqual(draw(id, u), draw(id, { ...u })); assert.notStrictEqual(draw(id, u), draw(id, A.DEVNET.approved));
+  assert.notStrictEqual(draw(id, u, .2), draw(id, u, 1), 'fades over t');
+  assert.strictEqual(draw(id, u, .45 + .01).length, 64);
+  const r = rec(); P[id].render(r.canvas, u, 1); const L = r.log.join('\n'); assert(L.includes('saturation') && L.includes('unanswered')); assert(!L.includes('strokeRect(20.000'), 'no refused frame'); });
+t('outcomeByte: approved 1, refused 0, unanswered 2, unknown -> 0 (fail to refused)', () => { assert.deepStrictEqual(['approved', 'refused', 'unanswered', 'x'].map(o => A.outcomeByte({ outcome: o })), [1, 0, 2, 0]); });
+console.log(n + ' aperture tests pass');

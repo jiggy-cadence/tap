@@ -27,4 +27,14 @@ for (const k of ['approved', 'refused']) {
 t('tapestry rounds are the real SHA-256 rounds (sha256 impl == node for many lengths)', () => { for (let L = 0; L < 200; L += 7) { const m = crypto.createHash('sha256').update('x' + L).digest().subarray(0, 0); const b = Buffer.alloc(L, L & 255); assert.strictEqual(S.hex(S.sha256(b)), crypto.createHash('sha256').update(b).digest('hex')); } });
 t('one flipped lamport changes H and the art', () => { const a = S.DEVNET.approved, b = { ...a, lamports: a.lamports + 1 }; assert.notStrictEqual(S.model(a).H, S.model(b).H); assert.notStrictEqual(draw(a), draw(b)); });
 t('signature decodes to 64 bytes, pubkey to 32', () => { assert.strictEqual(S.b58decode(S.DEVNET.approved.sig).length, 64); assert.strictEqual(S.b58decode(S.DEVNET.approved.pubkey).length, 32); });
+t('unanswered: ok byte 2 in H, path neither closes nor breaks, dims', () => { const u = S.DEVNET.unanswered, M = S.model(u);
+  assert.strictEqual(M.tap.outcome, 'unanswered'); assert.strictEqual(M.unanswered, true); assert.strictEqual(M.refused, false); assert.strictEqual(M.curve.closed, null);
+  const input = Buffer.from(M.inputHex, 'hex'); assert.strictEqual(input[input.length - 1], 2); assert.strictEqual(M.H, crypto.createHash('sha256').update(input).digest('hex'));
+  for (const o of ['approved', 'refused']) assert.notStrictEqual(M.H, S.model({ ...u, outcome: o }).H);
+  const r = recorder(); S.render(r.ctx, M, 800, 1); const L = r.log.join('\n');
+  assert(!L.includes('#ff2a2a') && !L.includes('255,42,42'), 'no red tear/X on unanswered'); assert(L.includes('saturation'), 'desaturated');
+  const alphaAt = p => { const r2 = recorder(); S.render(r2.ctx, M, 800, p); const a = r2.log.filter(x => x.startsWith('globalAlpha=')).map(x => +x.split('=')[1]); return Math.max(...a.filter(v => v < 1)); };
+  assert(alphaAt(1) > alphaAt(.2), 'veil darkens as p grows');
+  assert.strictEqual(draw(u), draw({ ...u })); });
+t('existing approved/refused H unchanged by the third state (ok byte still 1/0)', () => { assert.strictEqual(S.model(S.DEVNET.approved).inputHex.slice(-2), '01'); assert.strictEqual(S.model(S.DEVNET.refused).inputHex.slice(-2), '00'); });
 console.log(n + ' SEAL tests pass');

@@ -53,6 +53,6 @@ function render(canvas, tap, t = 1) { const ctx = A.ctxOf(canvas), W = A.sizeOf(
     label(ctx, 'refusal glider, sent off the ledger', ex - 4 * k, ey - 120 * k, { size: 13 * k, color: P.red, align: 'right' }); }
   return M; }
 const caption = 'How this was made: H = SHA-256("TAP-LIFE-v1" | tap) streams 3200 bits into a 40×40 soup (two bits per cell, live if either is 1 ≈ 75% density). Conway\'s B3/S23 runs on a 160×160 board (we show the middle 72×72). Every generation is hashed; the first repeated state gives the true settling generation and period. Refused taps add one glider aimed south-east, off the ledger. Amber dust marks every cell that was ever alive.';
-const P = { name: "Conway's Ledger", id: 'life', model, render, caption, step }; A.pieces.life = P;
+const P = { name: "Conway's Ledger", id: 'life', model, render: A.withOutcome(render), caption, step }; A.pieces.life = P;
 if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.APERTURE_LIFE = P;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -47,6 +47,6 @@ function render(canvas, tap, t = 1) { const ctx = A.ctxOf(canvas), W = A.sizeOf(
   return M; }
 const label = A.label;
 const caption = 'How this was made: H = SHA-256("TAP-TRUCHET-v1" | tap) seeds a SHA-256 counter stream. Each page of 196 bits sets 14×14 Smith tiles (quarter-circle arcs). We trace the strand that enters the top-left tile exactly, edge to edge. Approved taps take the first page whose strand exits the bottom-right tile; refused taps take the first page where it wanders at least 40 tiles and still misses. The page number is printed.';
-const P = { name: 'Truchet Receipt', id: 'truchet', model, render, caption, trace }; A.pieces.truchet = P;
+const P = { name: 'Truchet Receipt', id: 'truchet', model, render: A.withOutcome(render), caption, trace }; A.pieces.truchet = P;
 if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.APERTURE_TRUCHET = P;
 })(typeof window !== 'undefined' ? window : globalThis);
