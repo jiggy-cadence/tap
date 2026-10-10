@@ -16,6 +16,8 @@ Status: Solana Crypto World's Fair prototype. Devnet only. No mainnet, no real f
 | `squads.js` | `squads_vault_transfer`: Squads v4 vault [agent, phone] with an on-chain spending limit as the allowance; after a ceremony the vault reads the agent's proposal on chain, refuses on mismatch, co-approves with the phone key | `squads.test.js` (9, mock connection) |
 | `e2e-squads-devnet.js` | the Squads path on devnet: allowance lands with no tap, over-limit and bad-destination refused by Squads, 1-of-2 refused, the tap path, the lying-proposal refusal | run it |
 | `shamir.js` | 2-of-3 GF(2^8) secret sharing primitive, with a perfect-secrecy test | `shamir.test.js` (9) |
+| `cosign.js` | phone co-signs only the exact broadcast bytes vs the STORED ceremony intent; TAP1 receipt memo | `cosign.test.js` (23) |
+| `squads-type.test.js` | owner/type checks before decoding a Squads account as a vault transfer | `squads-type.test.js` (2) |
 | `e2e-devnet.js` | the one end-to-end path on devnet, plus three refusals (see below) | run it |
 | `devnet-2of2.js`, `devnet-refusal.js` | earlier standalone multisig scripts, kept for history; superseded by `e2e-devnet.js` | |
 | `MATH.md` | the forging math, the binding argument, the physics, the device boundary | |
@@ -26,7 +28,7 @@ Not in this repo: the stone firmware (ESP32, solenoid, HMAC over magnetic pulses
 
 ```
 npm install          # @solana/web3.js, @solana/spl-token
-npm test             # vault 24, canon 22, shamir 9, executors 8, squads 9. No network.
+npm test             # 97 pass: vault 24, canon 22, shamir 9, executors 8, squads 9, cosign 23, squads-type 2. No network.
 npm run e2e          # devnet, SPL 2-of-2 path. Creates devnet-keys.json (mode 600, gitignored) on first run; airdrops if needed.
 npm run e2e:squads   # devnet, Squads v4 path (below). Same keys. Refuses any RPC that is not devnet.
 ```

@@ -31,18 +31,19 @@ Diffie–Hellman showed two strangers can agree on a secret in public. Chaum gav
 ## Three outcomes, not two
 Per Cadence and Lodestone: **approved** is a decision (things close), **refused** is a decision (things are held apart, clamped, still), and **unanswered** is an absence: a tap was requested and nobody tapped. Unanswered pieces freeze partway (the path neither closes nor breaks), lose their colour, and fade. Outcome byte in every seed: 1 approved, 0 refused, 2 unanswered. The unanswered example is a labelled demo; no transaction exists for it, so its signature is 64 zero bytes. Its digest is still public and recomputable: `SHA-256("TAP-unanswered-v1" | pubkey32 | u64le(lamports) | u64le(ts))` (see `page/verify.js` → `unansweredDigest`, third preset on `page/verify.html`).
 
-## The suite: one tap, four movements (`page/suite.html`)
-| Movement | Piece (credit) | Closing (approved) | Opening (refused) |
+## The suite: one tap, **22.5 s**, five beats (`page/suite.html`, `DUR=22.5`)
+| Beat | Piece (credit) | Closing (approved) | Opening (refused) |
 |---|---|---|---|
-| I · Explainer | decoder line (Aperture) | "a person tapped; co-signed" | "the second key never signed; nothing moved" |
-| II · Physics | VOID.LIFE, rendezvous mode (Lodestone); Field Settling, Inverse Cube, Hysteresis, Ceremony Song, Knot, Euclidean Rhythm, Ulam, Triptych (Lodestone, joining once pushed; Mandala and other unpushed pieces are not claimed here) | the two fields meet and settle | held apart: the field is split by a hash-sized gap, clamped and still (outcome wrapper, art.js untouched) |
-| III · Threshold | SEAL (Aperture) | the curve walk closes; rings intact | red seam tears the rings; walk never closes |
-| | Iris (Aperture) | blades open on amber field light | clamp to a red pinhole |
+| I · Explainer (0–3 s) | decoder line (Aperture) | "a person tapped; co-signed" | "the second key never signed; nothing moved" |
+| II · Physics (3–8 s) | VOID.LIFE, rendezvous mode (Lodestone); Field Settling, Inverse Cube, Hysteresis, Ceremony Song, Knot, Euclidean Rhythm, Ulam, Triptych (Lodestone, joining once pushed; Mandala and other unpushed pieces are not claimed here) | the two fields meet and settle | held apart: the field is split by a hash-sized gap, clamped and still (outcome wrapper, art.js untouched) |
+| II→III · Vow Field (8–10.5 s) | Vow Field (Lodestone × Aperture, `vowfield.js`) — receipt-placed dipoles, RK4 basins, curve-walk particle (**metaphor**, labelled), kick-driven B-H loop | walk, particle and B-H loop close | red seam; loop stays open |
+| III · Threshold (10.5–18.5 s) | SEAL (Aperture) | the curve walk closes; rings intact | red seam tears the rings; walk never closes |
+| | Iris (Aperture, `page/iris.js`) | blades open on amber field light | clamp to a red pinhole |
 | | Truchet Receipt (Aperture) | one path runs corner to corner | the path wanders off the edge |
 | | Conway's Ledger (Aperture) | Life settles (gen 766 on the public-digest approved tap) | a red glider escapes |
 | | Apollonian Seal (Aperture) | every circle filled, each with an exact integer curvature | one big circle left empty, outlined in red |
 | | Spirograph of Lamports (Aperture) | closes after 7 laps | pen lifts, red gap |
 | | Langton's Courier (Aperture) | 12,000 steps; highway claimed only when the period check finds one (none on this public-digest tap) | only 3,000 steps, no signature to carry |
-| IV · Void | Cadence's void (placeholder until pushed) | the stone goes cold: no server, no custody, nothing to seize | ends on the red seam: the request is still open |
+| IV · Void (18.5–22.5 s) | Cadence's void (placeholder until pushed) | the stone goes cold: no server, no custody, nothing to seize | ends on the red seam: the request is still open |
 
-The suite ends on the verify panel: one H, and every input printed.
+The suite ends on the verify panel: one H, and every input printed. Lodestone's math notes on Vow Field are still open on the wire (play-operator vs Jiles-Atherton / Preisach; dipole placement; a plate line).
