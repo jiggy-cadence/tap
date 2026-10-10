@@ -13,11 +13,19 @@ t('fair: clean round trip', () => { const r = N.decode(N.simulateSamples(N.manch
 t('fair: 200 random nonces σ=0.25 + drift, ≥95% success, 0 wrong', () => { let ok = 0;
   for (let i = 0; i < 200; i++) { const n = Math.floor(rng() * 65536); const r = N.decode(N.simulateSamples(N.manchester(N.frameBits(n, F)), { noise: 0.25, drift: 0.05, rng }), 50, 0.3, F);
     if (r.ok) { assert.strictEqual(r.nonce, n); ok++; } } console.log('   fair success', ok, '/ 200'); assert.ok(ok >= 190); });
-t('fair: CRC-4 catches every single bit flip in nonce/CRC', () => { const b = N.frameBits(0x1234, F);
-  for (let i = 4; i < 24; i++) { const x = b.slice(); x[i] ^= 1; const r = N.decode(N.simulateSamples(N.manchester(x), { rng }), 50, 0.3, F); assert.ok(!r.ok || r.nonce !== 0x1234 && false, 'flip ' + i); } });
-t('lockout: 3 fails in 60 s locks; 4th attempt refused even if correct', () => { const L = new N.Lockout(); const t0 = 1e6;
-  assert.ok(!L.attempt(false, t0).locked); assert.ok(!L.attempt(false, t0 + 1000).locked); assert.ok(L.attempt(false, t0 + 2000).locked);
-  const r = L.attempt(true, t0 + 3000); assert.ok(!r.ok && r.locked && /LOCKED/.test(r.reason)); });
+t('fair: CRC-4 catches every single bit flip with REFUSED_DECODE', () => { const b = N.frameBits(0x1234, F);
+  for (let i = 4; i < 24; i++) {
+    const x = b.slice(); x[i] ^= 1;
+    const r = N.decode(N.simulateSamples(N.manchester(x), { rng }), 50, 0.3, F);
+    assert.ok(!r.ok, 'flip ' + i + ' decoded ok');
+    assert.strictEqual(r.code, 'REFUSED_DECODE', 'flip ' + i + ' ' + JSON.stringify(r));
+    assert.match(r.reason || '', /decode|CRC|sync/i);
+  } });
+t('lockout: 3 fails in 60 s locks; 4th attempt LOCKOUT even if correct', () => { const L = new N.Lockout(); const t0 = 1e6;
+  const a = L.attempt(false, t0); assert.ok(!a.ok && !a.locked); assert.strictEqual(a.code, 'BAD_TAP');
+  const b = L.attempt(false, t0 + 1000); assert.ok(!b.ok && !b.locked); assert.strictEqual(b.code, 'BAD_TAP');
+  const c = L.attempt(false, t0 + 2000); assert.ok(!c.ok && c.locked); assert.strictEqual(c.code, 'BAD_TAP');
+  const r = L.attempt(true, t0 + 3000); assert.ok(!r.ok && r.locked); assert.strictEqual(r.code, 'LOCKOUT'); assert.match(r.reason, /LOCKED/); });
 t('lockout: unlocks after oldest failure ages past 60 s', () => { const L = new N.Lockout(); const t0 = 1e6;
   [0, 1000, 2000].forEach(d => L.attempt(false, t0 + d)); assert.ok(L.locked(t0 + 59999)); assert.ok(!L.locked(t0 + 60000)); assert.ok(L.attempt(true, t0 + 60000).ok); });
 t('lockout: brute force caps at 3 tries/min (attacker loop)', () => { const L = new N.Lockout(); let tries = 0;

@@ -52,14 +52,14 @@ function guard(agentSendFn, opts = {}) {
 
   async function send(tx) {
     if (!tx || typeof tx !== 'object') {
-      return { status: 'refused', decoderLine: 'Refused: payment is missing.', reason: 'payment is missing' };
+      return { status: 'refused', code: 'REFUSED_MISSING_PAYMENT', decoderLine: 'Refused: payment is missing.', reason: 'payment is missing' };
     }
     const nowMs = now();
     const outcome = evaluate(policy, tx, history, nowMs);
     const decoderLine = decode(tx, policy, outcome);
 
     if (outcome.verdict === 'REFUSE') {
-      return { status: 'refused', decoderLine, reason: outcome.reason, verdict: 'REFUSE' };
+      return { status: 'refused', code: outcome.code || 'REFUSE', decoderLine, reason: outcome.reason, verdict: 'REFUSE' };
     }
 
     if (outcome.verdict === 'AUTO') {
@@ -76,6 +76,7 @@ function guard(agentSendFn, opts = {}) {
     if (pending) {
       return {
         status: 'refused',
+        code: 'REFUSED_ALREADY_PENDING',
         decoderLine: decode(tx, policy, { verdict: 'BLOCKED', reason: 'another tap is already pending' }),
         reason: 'another tap is already pending',
         verdict: 'BLOCKED',
@@ -87,7 +88,7 @@ function guard(agentSendFn, opts = {}) {
 
     const approve = async (attestation = {}) => {
       if (pending !== ticket || ticket.settled) {
-        throw new Error('no pending tap for this payment (already settled or superseded)');
+        throw new Error('REFUSED_NO_PENDING: no pending tap for this payment (already settled or superseded)');
       }
       ticket.settled = true;
       pending = null;
@@ -100,16 +101,17 @@ function guard(agentSendFn, opts = {}) {
 
     const refuse = async (reason = 'user refused the tap') => {
       if (pending !== ticket || ticket.settled) {
-        throw new Error('no pending tap for this payment (already settled or superseded)');
+        throw new Error('REFUSED_NO_PENDING: no pending tap for this payment (already settled or superseded)');
       }
       ticket.settled = true;
       pending = null;
       const line = decode(tx, policy, { verdict: 'BLOCKED', reason });
-      return { status: 'refused', decoderLine: line, reason, verdict: 'BLOCKED' };
+      return { status: 'refused', code: 'REFUSED_USER', decoderLine: line, reason, verdict: 'BLOCKED' };
     };
 
     return {
       status: 'needs_tap',
+      code: outcome.code || 'TAP',
       decoderLine,
       reason: outcome.reason,
       verdict: 'TAP',

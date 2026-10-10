@@ -63,7 +63,7 @@ function decode(samples, fs = 50, minDiff = 0.3, mode) {
     if (crcBits(nb, m.crcBits, m.poly) !== fromBits(bits.slice(m.syncBits + m.nonceBits))) continue;
     return { ok: true, nonce: fromBits(nb) >>> 0, startSample: st, mode: m.name };
   }
-  return { ok: false, mode: m.name };
+  return { ok: false, code: 'REFUSED_DECODE', reason: 'magnet decode failed (CRC or sync)', mode: m.name };
 }
 // Lockout: after `max` failed decodes/verifies inside `windowMs`, refuse new taps until the
 // oldest failure ages out. Lives on the verifier/stone side (an attacker controls the phone app).
@@ -73,9 +73,9 @@ class Lockout {
   locked(now = Date.now()) { this._prune(now); return this.fails.length >= this.max; }
   // returns { ok, locked, reason }
   attempt(success, now = Date.now()) {
-    if (this.locked(now)) return { ok: false, locked: true, reason: 'LOCKED: too many failed taps, wait ' + Math.ceil((this.fails[0] + this.windowMs - now) / 1000) + ' s' };
+    if (this.locked(now)) return { ok: false, locked: true, code: 'LOCKOUT', reason: 'LOCKED: too many failed taps, wait ' + Math.ceil((this.fails[0] + this.windowMs - now) / 1000) + ' s' };
     if (success) return { ok: true, locked: false };
-    this.fails.push(now); return { ok: false, locked: this.locked(now), reason: 'bad tap' };
+    this.fails.push(now); return { ok: false, locked: this.locked(now), code: 'BAD_TAP', reason: 'bad tap' };
   }
 }
 const bruteForceOdds = ({ nonceBits = 16, triesPerMin = 3, minutes = 1 } = {}) => 1 - (1 - 2 ** -nonceBits) ** (triesPerMin * minutes);

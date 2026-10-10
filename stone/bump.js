@@ -56,8 +56,8 @@ function detectKicks(samples, opts = {}) {
 function matchSchedule(kicks, schedule, opts = {}) {
   const o = { ...DEFAULTS, ...opts };
   const need = Math.min(o.minMatched ?? schedule.length, schedule.length);
-  if (kicks.length < need) return { ok: false, reason: `only ${kicks.length} bumps, need ${need}` };
-  let best = null;
+  if (kicks.length < need) return { ok: false, code: 'REFUSED_BUMP_COUNT', reason: `only ${kicks.length} bumps, need ${need}` };
+  let best = null, sawExtraReject = false;
   // anchor any detected kick on any scheduled kick (the first kick may be the one that was missed)
   for (const anchor of kicks) for (const s0 of schedule) {
     const off = anchor - s0; const used = new Set(); let maxErr = 0, matched = 0;
@@ -70,10 +70,12 @@ function matchSchedule(kicks, schedule, opts = {}) {
     if (matched < need) continue;
     // unmatched bumps anywhere in the capture count against us (blocks "thump constantly")
     const extra = kicks.length - used.size;
-    if (extra > o.maxExtraPeaks) continue;
+    if (extra > o.maxExtraPeaks) { sawExtraReject = true; continue; }
     if (!best || matched > best.matched || (matched === best.matched && maxErr < best.maxErrMs)) best = { ok: true, offsetMs: off, maxErrMs: maxErr, matched, extra };
   }
-  return best || { ok: false, reason: 'bump timing does not match the nonce schedule' };
+  if (best) return best;
+  if (sawExtraReject) return { ok: false, code: 'REFUSED_BUMP_EXTRA', reason: 'too many extra bumps (constant thumping)' };
+  return { ok: false, code: 'REFUSED_BUMP_TIMING', reason: 'bump timing does not match the nonce schedule' };
 }
 
 function verifyBump(samples, nonce, opts = {}) {
@@ -83,10 +85,10 @@ function verifyBump(samples, nonce, opts = {}) {
 
 // presence = magnet nonce OK AND bump schedule OK (for the SAME nonce).
 function presence(magnetResult, samples, expectedNonce, opts = {}) {
-  if (!magnetResult || !magnetResult.ok) return { ok: false, reason: 'magnet code failed' };
-  if (magnetResult.nonce !== expectedNonce) return { ok: false, reason: 'magnet nonce mismatch' };
+  if (!magnetResult || !magnetResult.ok) return { ok: false, code: 'REFUSED_MAGNET_FAILED', reason: 'magnet code failed' };
+  if (magnetResult.nonce !== expectedNonce) return { ok: false, code: 'REFUSED_MAGNET_NONCE_MISMATCH', reason: 'magnet nonce mismatch' };
   const b = verifyBump(samples, expectedNonce, opts);
-  if (!b.ok) return { ok: false, reason: 'bump: ' + b.reason, bump: b };
+  if (!b.ok) return { ok: false, code: b.code || 'REFUSED_BUMP_TIMING', reason: 'bump: ' + b.reason, bump: b };
   return { ok: true, bump: b };
 }
 

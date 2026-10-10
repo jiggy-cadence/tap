@@ -49,22 +49,22 @@ function createSigner(opts = {}) {
     // ceremony for one payment can't authorize a different one.
     sign({ tx, challengeHex, intentDigest }) {
       if (!attestation) {
-        return { ok: false, error: 'REFUSED: no presence attestation. Phone was not at the stone.' };
+        return { ok: false, code: 'REFUSED_NO_TAP', error: 'REFUSED: no presence attestation. Phone was not at the stone.' };
       }
       if (now() - attestation.verifiedAt > ttlMs) {
         attestation = null;
-        return { ok: false, error: 'REFUSED: attestation expired. Re-run the ceremony.' };
+        return { ok: false, code: 'REFUSED_EXPIRED', error: 'REFUSED: attestation expired. Re-run the ceremony.' };
       }
       if (challengeHex !== attestation.challengeHex) {
-        return { ok: false, error: 'REFUSED: challenge mismatch — attestation is for a different ceremony.' };
+        return { ok: false, code: 'REFUSED_CHALLENGE_MISMATCH', error: 'REFUSED: challenge mismatch — attestation is for a different ceremony.' };
       }
       // Recompute from the tx actually being signed. Never trust a caller-supplied digest.
       let actual;
       try { actual = intentOf(tx); } catch (e) {
-        return { ok: false, error: 'REFUSED: payment is not canonicalizable (' + e.message + ').' };
+        return { ok: false, code: 'REFUSED_NOT_CANONICAL', error: 'REFUSED: payment is not canonicalizable (' + e.message + ').' };
       }
       if (actual !== attestation.intentDigest || (intentDigest && intentDigest !== actual)) {
-        return { ok: false, error: 'REFUSED: intent mismatch — this ceremony authorized a different payment.' };
+        return { ok: false, code: 'REFUSED_INTENT_MISMATCH', error: 'REFUSED: intent mismatch — this ceremony authorized a different payment.' };
       }
       // Single-use: attestation is consumed by signing (prevents double-spend
       // of one presence proof across two transactions).
@@ -80,15 +80,15 @@ function createSigner(opts = {}) {
     // Bytes path: sign the exact serialized Solana message. Recomputes the digest from the
     // bytes being signed (never trusts a caller digest) and returns the decode the phone shows.
     signMessage({ messageBytes, challengeHex }) {
-      if (!attestation) return { ok: false, error: 'REFUSED: no presence attestation. Phone was not at the stone.' };
-      if (now() - attestation.verifiedAt > ttlMs) { attestation = null; return { ok: false, error: 'REFUSED: attestation expired. Re-run the ceremony.' }; }
-      if (challengeHex !== attestation.challengeHex) return { ok: false, error: 'REFUSED: challenge mismatch — attestation is for a different ceremony.' };
+      if (!attestation) return { ok: false, code: 'REFUSED_NO_TAP', error: 'REFUSED: no presence attestation. Phone was not at the stone.' };
+      if (now() - attestation.verifiedAt > ttlMs) { attestation = null; return { ok: false, code: 'REFUSED_EXPIRED', error: 'REFUSED: attestation expired. Re-run the ceremony.' }; }
+      if (challengeHex !== attestation.challengeHex) return { ok: false, code: 'REFUSED_CHALLENGE_MISMATCH', error: 'REFUSED: challenge mismatch — attestation is for a different ceremony.' };
       let display;
       try { display = require('./solmsg').decodeTransfer(messageBytes); } catch (e) {
-        return { ok: false, error: 'REFUSED: message not decodable for display (' + e.message + ').' };
+        return { ok: false, code: 'REFUSED_UNDECODABLE', error: 'REFUSED: message not decodable for display (' + e.message + ').' };
       }
       if (digestOf(messageIntentOf(messageBytes, domain)) !== attestation.intentDigest)
-        return { ok: false, error: 'REFUSED: intent mismatch — these bytes / this domain were not the ones approved.' };
+        return { ok: false, code: 'REFUSED_INTENT_MISMATCH', error: 'REFUSED: intent mismatch — these bytes / this domain were not the ones approved.' };
       attestation = null;
       const sig = privateKey ? crypto.sign(null, Buffer.from(messageBytes), privateKey).toString('hex') : null;
       return { ok: true, display, signature: sig, note: privateKey ? 'ed25519 over message bytes (demo key)' : 'no key configured (demo)' };

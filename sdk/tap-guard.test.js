@@ -37,6 +37,7 @@ const rawSend = async (tx, ctx) => { sent.push({ tx, ctx }); return { ok: true, 
     const r = await send({ kind: 'pay', to: ALICE, amountSol: 0.5, meta: { memo: 'rent' } });
     assert.strictEqual(r.status, 'needs_tap');
     assert.strictEqual(r.verdict, 'TAP');
+    assert.strictEqual(r.code, 'TAP_PER_TX');
     assert.ok(/Needs your tap/.test(r.decoderLine));
     assert.strictEqual(sent.length, 0, 'must not call agentSendFn before approve');
     assert.strictEqual(typeof r.approve, 'function');
@@ -62,9 +63,12 @@ const rawSend = async (tx, ctx) => { sent.push({ tx, ctx }); return { ok: true, 
     const send = guard(rawSend, { policy, now: () => 1_000_000 });
     const r = await send({ kind: 'drain', to: MALLORY, amountSol: 10 });
     assert.strictEqual(r.status, 'needs_tap');
+    assert.strictEqual(r.code, 'TAP_ALWAYS');
     assert.ok(/EVERYTHING/.test(r.decoderLine));
     const done = await r.refuse('no tap — phone was not at the stone.');
     assert.strictEqual(done.status, 'refused');
+    assert.strictEqual(done.code, 'REFUSED_USER');
+    assert.strictEqual(done.reason, 'no tap — phone was not at the stone.');
     assert.ok(/Blocked/.test(done.decoderLine));
     assert.strictEqual(sent.length, 0);
   });
@@ -81,6 +85,7 @@ const rawSend = async (tx, ctx) => { sent.push({ tx, ctx }); return { ok: true, 
     // 0.20 + fees used; another 0.10 would exceed 0.25 rolling
     const c = await send({ kind: 'pay', to: ALICE, amountSol: 0.10 });
     assert.strictEqual(c.status, 'needs_tap');
+    assert.strictEqual(c.code, 'TAP_ALLOWANCE');
     assert.ok(/rolling-24h|allowance|exceed/i.test(c.decoderLine + ' ' + c.reason));
   });
 
@@ -100,14 +105,15 @@ const rawSend = async (tx, ctx) => { sent.push({ tx, ctx }); return { ok: true, 
     const send = guard(rawSend, { policy, now: () => 3_000_000 });
     const r = await send({ kind: 'pay', to: MALLORY, amountSol: 0.01 });
     assert.strictEqual(r.status, 'needs_tap');
+    assert.strictEqual(r.code, 'TAP_RECIPIENT');
     assert.ok(/not on your list/.test(r.reason));
   });
 
-  await t('double approve throws', async () => {
+  await t('double approve throws REFUSED_NO_PENDING', async () => {
     const send = guard(rawSend, { policy, now: () => 4_000_000 });
     const r = await send({ kind: 'pay', to: ALICE, amountSol: 0.5 });
     await r.approve({});
-    await assert.rejects(() => r.approve({}), /no pending tap/);
+    await assert.rejects(() => r.approve({}), /REFUSED_NO_PENDING/);
   });
 
   await t('second needs_tap while pending is blocked', async () => {
@@ -117,6 +123,7 @@ const rawSend = async (tx, ctx) => { sent.push({ tx, ctx }); return { ok: true, 
     assert.strictEqual(a.status, 'needs_tap');
     const b = await send({ kind: 'pay', to: ALICE, amountSol: 0.5 });
     assert.strictEqual(b.status, 'refused');
+    assert.strictEqual(b.code, 'REFUSED_ALREADY_PENDING');
     assert.ok(/already pending/.test(b.reason));
     await a.refuse('done');
   });
@@ -131,8 +138,8 @@ const rawSend = async (tx, ctx) => { sent.push({ tx, ctx }); return { ok: true, 
     assert.ok(BigInt(h[0].lamports) === 50_000_000n);
   });
 
-  await t('missing policy throws', async () => {
-    assert.throws(() => guard(rawSend, {}), /policy/);
+  await t('missing policy throws named', async () => {
+    assert.throws(() => guard(rawSend, {}), /opts\.policy is required/);
   });
 
   console.log(`\n${pass}/${pass + fail} pass`);

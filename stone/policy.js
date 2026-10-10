@@ -33,19 +33,19 @@ function spentInWindow(history, nowMs) {
 }
 function evaluate(policy, tx, spent = 0, nowMs = Date.now()) {
   if ('amountSol' in tx && !('lamports' in tx) && typeof tx.amountSol !== 'number')
-    return { verdict: 'REFUSE', reason: Number.isFinite(Number(tx.amountSol)) ? 'amount must be a number, not text' : 'amount is not a valid number' };
+    return { verdict: 'REFUSE', code: 'REFUSE_BAD_AMOUNT', reason: Number.isFinite(Number(tx.amountSol)) ? 'amount must be a number, not text' : 'amount is not a valid number' };
   const amt = txLamports(tx);
-  if (amt === null) return { verdict: 'REFUSE', reason: 'amount is not a valid number (lamports must be an integer string)' };
+  if (amt === null) return { verdict: 'REFUSE', code: 'REFUSE_BAD_AMOUNT', reason: 'amount is not a valid number (lamports must be an integer string)' };
   const fee = feeOf(tx);
-  if (fee === null) return { verdict: 'REFUSE', reason: 'fee must be an integer string of lamports' };
-  if ((policy.alwaysTap || []).includes(tx.kind)) return { verdict: 'TAP', reason: `"${tx.kind}" always needs a tap` };
-  if (!(policy.allowedRecipients || {})[tx.to]) return { verdict: 'TAP', reason: 'recipient is not on your list' };
+  if (fee === null) return { verdict: 'REFUSE', code: 'REFUSE_BAD_FEE', reason: 'fee must be an integer string of lamports' };
+  if ((policy.alwaysTap || []).includes(tx.kind)) return { verdict: 'TAP', code: 'TAP_ALWAYS', reason: `"${tx.kind}" always needs a tap` };
+  if (!(policy.allowedRecipients || {})[tx.to]) return { verdict: 'TAP', code: 'TAP_RECIPIENT', reason: 'recipient is not on your list' };
   const perTx = solToLamports(policy.perTxAutoMaxSol), daily = solToLamports(policy.dailyAllowanceSol);
-  if (amt > perTx) return { verdict: 'TAP', reason: `${fmt(amt)} SOL is over the ${policy.perTxAutoMaxSol} SOL per-payment limit` };
+  if (amt > perTx) return { verdict: 'TAP', code: 'TAP_PER_TX', reason: `${fmt(amt)} SOL is over the ${policy.perTxAutoMaxSol} SOL per-payment limit` };
   // Legacy numeric arg: amounts only (pre-fee behavior) so old callers keep their meaning.
   const used = Array.isArray(spent) ? spentInWindow(spent, nowMs) : solToLamports(spent);
   const cost = Array.isArray(spent) ? amt + fee : amt;
-  if (used + cost > daily) return { verdict: 'TAP', reason: `would exceed the ${policy.dailyAllowanceSol} SOL rolling-24h allowance (${fmt(used)} SOL incl. fees used)` };
-  return { verdict: 'AUTO', reason: 'within allowance' };
+  if (used + cost > daily) return { verdict: 'TAP', code: 'TAP_ALLOWANCE', reason: `would exceed the ${policy.dailyAllowanceSol} SOL rolling-24h allowance (${fmt(used)} SOL incl. fees used)` };
+  return { verdict: 'AUTO', code: 'AUTO_OK', reason: 'within allowance' };
 }
 module.exports = { evaluate, spentInWindow, DAY_MS, LAMPORTS_PER_SOL, DEFAULT_FEE };

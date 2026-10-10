@@ -23,6 +23,6 @@ const otherSig = '2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnT
   await t('browser verifier refuses a tampered amount', async () => { const res = JSON.parse(JSON.stringify(require('../evidence/rJRY77eU.json').result));
     const ix = res.transaction.message.instructions.find(i => i.data.length < 20), d = R.b58decode(ix.data); d[1] ^= 1;
     const B = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'; let x = 0n; for (const b of d) x = x * 256n + BigInt(b); let s = ''; while (x > 0n) { s = B[Number(x % 58n)] + s; x /= 58n; } for (const b of d) { if (b) break; s = '1' + s; }
-    ix.data = s; const r = await R.verifyResult(res); assert(!r.ok); });
+    ix.data = s; const r = await R.verifyResult(res); assert(!r.ok); assert.match(r.why || '', /RECEIPT DOES NOT MATCH|not TransferChecked|expected 1 memo/); });
   console.log(n + ' receipt tests pass');
 })().catch(e => { console.error(e); process.exit(1); });
