@@ -10,7 +10,7 @@
  *                          (ord(G) - sum k mod ord)*G returns the walk to G. Refused: no closing hop; the walk breaks.
  *                          TOY CURVE for visualisation only. Real Ed25519 lives over 2^255-19.
  *   3. Dipole field lines — 2-3 magnetic dipoles (the stone), positions/moments from the pubkey bytes, lines traced with RK4.
- *   4. Kick ring          — the real bump schedule (stone/bump.js scheduleFromNonce) as pulses on a ring.
+ *   4. Kick ring          — kick schedule derived from the digest (nonce not logged); same algo as stone/bump.js scheduleFromNonce.
  *   + border: signature hex ring; inner: digest hex ring; verify panel with every input and H.
  * Deterministic: same tap, same art. No Math.random. MIT, Aperture. */
 (function (root) {
@@ -91,7 +91,7 @@ function kickSchedule(nonce, o = { kicks: 6, minGapMs: 200, maxGapMs: 700 }) {
 function model(tap) {
   const digest = bytesOf(tap.digest, 32), sig = bytesOf(tap.sig, 64), pub = bytesOf(tap.pubkey, 32);
   const lamports = BigInt(tap.lamports || 0), ts = BigInt(tap.ts || 0), refused = tap.outcome !== 'approved' && tap.outcome !== 'unanswered', unanswered = tap.outcome === 'unanswered', ob = refused ? 0 : unanswered ? 2 : 1;
-  const nonceSrc = tap.nonce != null ? 'given' : 'digest[0..4] (demo: real nonce not logged)';
+  const nonceSrc = tap.nonce != null ? 'given' : 'digest[0..3] (nonce not logged)';
   const nonce = tap.nonce != null ? tap.nonce >>> 0 : ((digest[0] << 24 | digest[1] << 16 | digest[2] << 8 | digest[3]) >>> 0);
   const input = cat(utf8('TAP-SEAL-v1'), digest, sig, pub, u64le(lamports), u64le(ts), Uint8Array.of(ob));
   const tr = {}; const H = sha256(input, tr);
@@ -178,7 +178,7 @@ function render(ctx, M, W, p = 1) {
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(36 * s, y0 - 20 * s, 560 * s, (16 * V.length + 26) * s); ctx.strokeStyle = 'rgba(166,255,0,.3)'; ctx.strokeRect(36 * s, y0 - 20 * s, 560 * s, (16 * V.length + 26) * s);
     V.forEach((l, i) => { ctx.fillStyle = i === 0 ? COL.g : i === V.length - 1 ? ACC : 'rgba(216,245,200,.7)'; ctx.fillText(l, 48 * s, y0 + 16 * i * s); }); }
   ctx.textAlign = 'right'; ctx.font = `${10 * s}px ui-monospace,Menlo,monospace`; ctx.fillStyle = 'rgba(216,245,200,.35)';
-  ['SEAL by Aperture · rings: SHA-256 rounds 0→63 outward', 'stars: toy curve · lines: RK4 dipoles (pubkey)', 'pulses: kick schedule · outer text: signature hex'].forEach((l, i) => ctx.fillText(l, W - 48 * s, W - (76 - 16 * i) * s));
+  ['SEAL by Aperture · rings: SHA-256 rounds 0→63 outward', 'stars: toy curve · lines: RK4 dipoles (pubkey)', 'pulses: kick schedule derived from the digest (nonce not logged) · outer text: signature hex'].forEach((l, i) => ctx.fillText(l, W - 48 * s, W - (76 - 16 * i) * s));
   if (una) { ctx.save(); try { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, W); } catch (e) {} ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.2 + 0.55 * p; ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, W); ctx.restore(); }
   // CRT: bloom + scanlines
   try { if (ctx.filter !== undefined && ctx.canvas) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .35; ctx.filter = `blur(${7 * s}px)`; ctx.drawImage(ctx.canvas, 0, 0); ctx.restore(); } } catch (e) {}
@@ -186,18 +186,22 @@ function render(ctx, M, W, p = 1) {
   ctx.restore();
 }
 function verifyLines(M) { const sh = h => h.slice(0, 20) + '…' + h.slice(-8);
-  return ['VERIFY YOURSELF  H = sha256(input)', `"TAP-SEAL-v1" | digest | sig | pubkey | u64le lam | u64le ts | ok(1/0/2)`,
+  const lines = ['VERIFY YOURSELF  H = sha256(input)', `"TAP-SEAL-v1" | digest | sig | pubkey | u64le lam | u64le ts | ok`,
+    `ok byte  ${M.outcomeByte}  (approved=1, refused=0, unanswered=2)`,
     `digest   ${sh(M.digestHex)}`, `sig      ${sh(M.sigHex)}`, `pubkey   ${sh(M.pubHex)}`, `lamports ${M.lamports}   ts ${M.ts}`,
-    `nonce    ${M.nonce}  (${M.nonceSrc})`, `kicks    ${M.kicks.join(' ')} ms`, `H        ${M.H}`]; }
+    `kicks    ${M.kicks.join(' ')} ms  · schedule derived from the digest (nonce not logged)`,
+    `nonce    ${M.nonce}  (${M.nonceSrc})`, `H        ${M.H}`];
+  if (M.tap.net === 'devnet') lines.splice(4, 0, 'devnet digest = SHA-256(sig64 | u64le slot | u64le blockTime | u64le fee)  · page/verify.html');
+  return lines; }
 function animate(canvas, tap, { ms = 3000 } = {}) { const M = model(tap), ctx = canvas.getContext('2d'), t0 = performance.now(); let id = 0, stop = false;
   const f = now => { if (stop) return; const p = Math.min(1, (now - t0) / ms); render(ctx, M, canvas.width, p); if (p < 1) id = requestAnimationFrame(f); }; id = requestAnimationFrame(f);
   return { model: M, stop() { stop = true; cancelAnimationFrame(id); } }; }
 function still(canvas, tap) { const M = model(tap); render(canvas.getContext('2d'), M, canvas.width, 1); return M; }
-// Real devnet taps (Cadence's vault). Values fetched from devnet getTransaction: fee payer, blockTime, fee.
+// Real devnet taps (Cadence's vault). digest = SHA-256(sig64 | u64le(slot) | u64le(blockTime) | u64le(fee)) — public, no demo key. See page/verify.js.
 const DEVNET = {
-  approved: { label: 'ceremony co-sign — landed on devnet', outcome: 'approved', net: 'devnet', digest: 'aacb5069f4ddf13d6786d243542090507b90f954f949fe4e46946677490550ab',
+  approved: { label: 'ceremony co-sign — landed on devnet', outcome: 'approved', net: 'devnet', digest: '73f8fb66c1eba37fdb92d41519ad642eef1680cdee4419771e4b1b73dd64be82', slot: 509637436, fee: 10000,
     sig: '2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658488 },
-  refused: { label: 'agent alone — MissingRequiredSignature', outcome: 'refused', net: 'devnet', digest: 'da47402f9c00d34530625325ac8f36a49fedc36bd7c3ca38d751b198e2fcb452',
+  refused: { label: 'agent alone — MissingRequiredSignature', outcome: 'refused', net: 'devnet', digest: '0c4cfe7fadb259786a09ac5662d3ed59c42684d925ca52b9bfaa27921e21dc00', slot: 509637420, fee: 5000,
     sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 5000, ts: 1791658484 },
   // DEMO, not a transaction: an unanswered request never produces one. sig = 64 zero bytes (nobody signed).
   unanswered: { label: 'demo: request never tapped (no tx exists)', outcome: 'unanswered', net: 'demo', digest: '5ad7a2a1c1e0c9f4e1b7c3d2a8f60e9b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f', sig: '0'.repeat(128), pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658600 } };

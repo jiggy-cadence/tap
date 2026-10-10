@@ -37,4 +37,19 @@ t('unanswered: ok byte 2 in H, path neither closes nor breaks, dims', () => { co
   assert(alphaAt(1) > alphaAt(.2), 'veil darkens as p grows');
   assert.strictEqual(draw(u), draw({ ...u })); });
 t('existing approved/refused H unchanged by the third state (ok byte still 1/0)', () => { assert.strictEqual(S.model(S.DEVNET.approved).inputHex.slice(-2), '01'); assert.strictEqual(S.model(S.DEVNET.refused).inputHex.slice(-2), '00'); });
+t('devnet digests = SHA-256(sig64 | u64le slot | u64le blockTime | u64le fee) — public, no demo key', () => {
+  const V = require('./verify.js');
+  for (const k of ['approved', 'refused']) {
+    const tap = S.DEVNET[k], pub = V.DEVNET_PUBLIC[k];
+    assert.strictEqual(tap.sig, pub.sig); assert.strictEqual(tap.slot, pub.slot); assert.strictEqual(tap.ts, pub.blockTime); assert.strictEqual(Number(tap.lamports), pub.fee);
+    const d = V.publicDigest(pub); assert.strictEqual(tap.digest, d.digestHex);
+    const H = V.pieceH('SEAL', tap); assert.strictEqual(S.model(tap).H, H.Hhex);
+  }
+});
+t('verifyLines names kick schedule derived from the digest (nonce not logged)', () => {
+  const V = S.verifyLines(S.model(S.DEVNET.approved)).join('\n');
+  assert(V.includes('kick schedule derived from the digest (nonce not logged)') || V.includes('nonce not logged'));
+  assert(V.includes('approved=1') && V.includes('refused=0') && V.includes('unanswered=2'));
+  assert(V.includes('devnet digest = SHA-256'));
+});
 console.log(n + ' SEAL tests pass');

@@ -1,5 +1,6 @@
 /* Aperture whimsy — shared helpers. Every piece seeds from
- *   H = SHA-256("TAP-<piece>-v1" | digest(32) | sig(64) | pubkey(32) | u64le lamports | u64le ts | outcome(1=approved,0=refused,2=unanswered))
+ *   H = SHA-256("TAP-<piece>-v1" | digest(32) | sig(64) | pubkey(32) | u64le lamports | u64le ts | outcome_byte)
+ *   outcome_byte: approved=1, refused=0, unanswered=2. Devnet digest = SHA-256(sig64|u64le slot|u64le blockTime|u64le fee).
  * and draws further bytes from the counter stream SHA-256(H | u32be i). No RNG anywhere. MIT, Aperture. */
 (function (root) {
 'use strict';
@@ -71,8 +72,8 @@ function withOutcome(render) { return function (canvas, tap, t = 1) { if (!tap |
   render(canvas, tap, Math.min(t, UNANSWERED_FREEZE)); veil(ctxOf(canvas), sizeOf(canvas), t); }; }
 const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return Math.abs(a); };
 const DEVNET = {
-  approved: { outcome: 'approved', digest: 'aacb5069f4ddf13d6786d243542090507b90f954f949fe4e46946677490550ab', sig: '2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658488 },
-  refused: { outcome: 'refused', digest: 'da47402f9c00d34530625325ac8f36a49fedc36bd7c3ca38d751b198e2fcb452', sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 5000, ts: 1791658484 },
+  approved: { outcome: 'approved', digest: '73f8fb66c1eba37fdb92d41519ad642eef1680cdee4419771e4b1b73dd64be82', slot: 509637436, fee: 10000, sig: '2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658488 },
+  refused: { outcome: 'refused', digest: '0c4cfe7fadb259786a09ac5662d3ed59c42684d925ca52b9bfaa27921e21dc00', slot: 509637420, fee: 5000, sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD', pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 5000, ts: 1791658484 },
   // DEMO, not a transaction: an unanswered request never produces one. sig = 64 zero bytes (nobody signed).
   unanswered: { outcome: 'unanswered', label: 'demo: request never tapped (no tx exists)', digest: '5ad7a2a1c1e0c9f4e1b7c3d2a8f60e9b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f', sig: '0'.repeat(128), pubkey: '5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY', lamports: 10000, ts: 1791658600 } };
 function ctxOf(c) { return (c && c.getContext) ? c.getContext('2d') : c; }

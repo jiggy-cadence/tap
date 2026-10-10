@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAP · verify</title>
+<style>
+:root{--ink:#07080a;--bone:#d8f5c8;--dim:#5d6358;--g:#a6ff00;--amber:#ffb347;--red:#ff3b3b;--hair:rgba(166,255,0,.18)}
+html,body{margin:0;background:var(--ink);color:var(--bone);font:13px/1.55 ui-monospace,Menlo,monospace}
+.wrap{max-width:720px;margin:0 auto;padding:40px 22px 80px}
+h1{font-weight:500;font-size:22px;color:var(--g);letter-spacing:.04em;margin:0 0 8px}
+.sub{color:var(--dim);margin:0 0 28px} code{color:var(--g)}
+label{display:block;color:var(--dim);font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin:14px 0 4px}
+input,select{width:100%;box-sizing:border-box;background:#0d1012;border:1px solid var(--hair);color:var(--bone);padding:10px 12px;font:inherit;border-radius:4px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{margin-top:18px;background:transparent;border:1px solid var(--g);color:var(--g);padding:10px 16px;font:inherit;cursor:pointer;border-radius:4px}
+button:hover{background:rgba(166,255,0,.08)}
+.out{margin-top:28px;border:1px solid var(--hair);padding:16px 18px;border-radius:6px;white-space:pre-wrap;word-break:break-all}
+.out .ok{color:var(--g)}.out .bad{color:var(--red)}.out .hi{color:var(--amber)}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 0}
+.presets button{margin:0;font-size:12px;padding:6px 10px}
+a{color:var(--amber)}
+</style></head><body><div class="wrap">
+<h1>VERIFY · public digest + piece H</h1>
+<p class="sub">Paste public Solana fields. No demo key. Formula documented in <a href="../ART-THESIS.md">ART-THESIS.md</a>.</p>
+
+<p class="sub"><code>digest = SHA-256( sig_bytes(64) | u64le(slot) | u64le(blockTime) | u64le(fee) )</code><br>
+<code>H = SHA-256( "TAP-&lt;piece&gt;-v1" | digest | sig | pubkey | u64le lamports | u64le ts | outcome_byte )</code><br>
+outcome_byte: <b>approved=1</b>, <b>refused=0</b>, <b>unanswered=2</b>.</p>
+
+<div class="presets">
+  <button type="button" id="pA">load approved (devnet)</button>
+  <button type="button" id="pR">load refused (devnet)</button>
+</div>
+
+<label>tx signature (base58 or 128-hex)</label>
+<input id="sig" spellcheck="false" placeholder="2ik5wV…">
+<div class="row">
+  <div><label>slot</label><input id="slot" inputmode="numeric" placeholder="509637436"></div>
+  <div><label>blockTime (unix)</label><input id="blockTime" inputmode="numeric" placeholder="1791658488"></div>
+</div>
+<div class="row">
+  <div><label>fee (lamports)</label><input id="fee" inputmode="numeric" placeholder="10000"></div>
+  <div><label>outcome</label>
+    <select id="outcome"><option value="approved">approved (=1)</option><option value="refused">refused (=0)</option><option value="unanswered">unanswered (=2)</option></select>
+  </div>
+</div>
+<label>pubkey (base58, for piece H)</label>
+<input id="pubkey" spellcheck="false" placeholder="5wQ8…">
+<div class="row">
+  <div><label>lamports (for piece H; usually = fee)</label><input id="lamports" inputmode="numeric"></div>
+  <div><label>ts (for piece H; usually = blockTime)</label><input id="ts" inputmode="numeric"></div>
+</div>
+<label>piece name</label>
+<select id="piece"><option>SEAL</option><option>TRUCHET</option><option>LIFE</option><option>APOLLONIAN</option><option>SPIRO</option><option>LANGTON</option></select>
+<button type="button" id="go">recompute</button>
+<div class="out" id="out">Paste fields and hit recompute.</div>
+</div>
+<script src="verify.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function load(k){
+  const p = VERIFY.DEVNET_PUBLIC[k];
+  $('sig').value = p.sig; $('slot').value = p.slot; $('blockTime').value = p.blockTime; $('fee').value = p.fee;
+  $('pubkey').value = p.pubkey; $('lamports').value = p.lamports; $('ts').value = p.ts; $('outcome').value = p.outcome;
+  go();
+}
+function go(){
+  const out = $('out');
+  try {
+    const fields = { sig: $('sig').value.trim(), slot: BigInt($('slot').value), blockTime: BigInt($('blockTime').value), fee: BigInt($('fee').value) };
+    const d = VERIFY.publicDigest(fields);
+    const tap = { digest: d.digestHex, sig: fields.sig, pubkey: $('pubkey').value.trim(),
+      lamports: BigInt($('lamports').value || $('fee').value), ts: BigInt($('ts').value || $('blockTime').value),
+      outcome: $('outcome').value };
+    const piece = $('piece').value;
+    const H = VERIFY.pieceH(piece, tap);
+    const known = Object.entries(VERIFY.DEVNET_PUBLIC).find(([,p]) => p.sig === fields.sig);
+    let match = '';
+    if (known) {
+      const expect = VERIFY.publicDigest(known[1]).digestHex;
+      match = d.digestHex === expect ? '\n<span class="ok">matches baked ' + known[0] + ' digest</span>' : '\n<span class="bad">does NOT match baked ' + known[0] + ' digest</span>';
+    }
+    out.innerHTML =
+      '<span class="hi">digest formula</span>\n' + d.formula + '\n\n' +
+      '<span class="hi">digest</span>\n' + d.digestHex + match + '\n\n' +
+      '<span class="hi">outcome_byte</span>  ' + H.outcomeByte + '  (approved=1, refused=0, unanswered=2)\n\n' +
+      '<span class="hi">piece H · ' + piece + '</span>\n' + H.formula + '\n' + H.Hhex + '\n\n' +
+      '<span class="dim">input hex (digest)</span>\n' + d.inputHex.slice(0, 80) + '…';
+  } catch (e) { out.innerHTML = '<span class="bad">' + String(e.message || e) + '</span>'; }
+}
+$('go').onclick = go; $('pA').onclick = () => load('approved'); $('pR').onclick = () => load('refused');
+</script>
+</body></html>

@@ -1,0 +1,21 @@
+# TAP Fair video shot list v2 — timestamp table
+
+Status: DRAFT for Jiggy (Aperture, 2026-10-10). Source: `_digs/tap-fair-shotlist-v2.md`. Max 2:00. Setup: laptop terminal in `stone/` (big font = agent log), stone on USB serial 115200 running `firmware/solenoid_blink.ino`, iPhone with TAP app, screen-record the phone, browser tabs: `page/taps.html` + explorer link.
+
+| Start–end | Shot | Exact command / file | Real vs simulated | On-screen caption (honest) |
+|---|---|---|---|---|
+| 0:00–0:08 | Title card 1: **"The agent tries. It dies."** | Lodestone `fair-title-cards.html` BEAT 01 (repost/push, then screenshot or screen-record) | Art card | none |
+| 0:08–0:28 | Small payment auto-approves; phone shows "Within allowance — no tap needed." | `node demo.js small` (policy.js rolling 24h, 0.10/tx auto, 0.25/24h, fees count; decoder.js) | Real code, **demo key**, simulated stone/agent in the terminal, no chain | "Under the allowance: no tap needed. Demo key." |
+| 0:28–0:50 | Agent drains, gets refused. Zoom on decoder: *"Your agent wants to send EVERYTHING (10 SOL) to unknown wallet Mall…1111. Blocked: no tap — phone was not at the stone."* | `node demo.js drain` (signer.js refuses without attestation) | Real code, demo key, no chain | "Agent tried to drain. No tap, no signature." |
+| 0:50–1:15 | Phone flat on the stone, **clack**, phone approves a 0.5 SOL payment (over the 0.10 auto limit). | Stone serial: `fire 1000`, then `node demo.js tap` (signer attest→sign, single-use; bound to full payment bytes) | Real solenoid and real phone. Magnet one-time code (`fire_nonce`) and kick-rhythm (`kicks`) are **not** in this shot unless flashed and bench-run first | "Live at the stone, for this exact payment. Liveness, not distance." Do **not** say "new code every tap" unless the nonce is flashed and decodes on camera. |
+| 1:15–1:35 | VOID.LIFE art blooms from that tap's signature | `page/taps.html`: click the approved card, or `window.addTap({digest, outcome:'approved', ...})`. Big view runs `KnotArt.renderAnimated` (`page/art.js`) beside Iris | Real deterministic art from the digest. Demo-key digest unless it's the devnet card | "Every tap leaves its own mark. VOID.LIFE by Lodestone. Same tap, same art." |
+| 1:35–1:50 | Devnet explorer: the ceremony co-sign landed | https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet (Cadence's vault). Digest of that card = `SHA-256(sig\|slot\|blockTime\|fee)` — see `page/verify.html` | **Real devnet tx** (test tokens) from Cadence's agent+phone 2-of-2. Not this exact on-camera tap, and not stone+phone | "Real devnet tx: agent alone can't move funds; with the phone's tap-released co-sign it lands." Never "neither stone nor phone alone." |
+| 1:50–2:00 | Title card 2: **"The stone sings. It signs."** + repo URL github.com/jiggy-cadence/tap | Lodestone title card BEAT 02 | Art card | repo link |
+
+Dropped from v1: replay and plain-magnet need the flashed nonce; two-phone beats don't fit the stone version. Title card 3 ("Pull away. It dies in your hand.") stays unused unless a pull-away abort is filmed for real.
+
+## Claims never on camera
+distance/proximity, "in the room," post-quantum as shipped, fresh address as quantum-safe, stone+phone 2-of-2.
+
+## Shot 5 rule (Lodestone)
+Art is display-only and fail-open. It fires only after signing and never gates or delays it.

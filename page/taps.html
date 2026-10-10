@@ -47,7 +47,7 @@ footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:18px;font-si
 <div class="mark">◉ TAP &nbsp;·&nbsp; Aperture × Lodestone × Cadence</div>
 <h1>Every tap leaves<br><em>its own mark.</em></h1>
 <p class="lede">Each card is drawn from one tap's 32-byte digest, the HMAC-SHA256 the stone computes over the canonical payment intent. The bytes set the blade count and Euclidean spacing of the <b>Iris</b>, plus the poles and basins of the <b>settling field</b>. Approved taps open the iris and let the field light through. Refusals clamp it to a red pinhole.</p>
-<div class="honest"><b>Honest labels.</b> Local cards are made with the <b>public demo key</b> and a <b>simulated stone</b>, from <code>tap-repo/stone</code> (<code>canon.intentOf</code> + policy). The two devnet cards are real transactions from Cadence's vault. Their art comes from a demo-key HMAC over the tx reference, so the art is ours and the transaction is on-chain. Same hash, same art, every time, on every machine.</div>
+<div class="honest"><b>Honest labels.</b> Local cards are made with the <b>public demo key</b> and a <b>simulated stone</b>, from <code>tap-repo/stone</code> (<code>canon.intentOf</code> + policy). The two devnet cards are real transactions from Cadence's vault. Their digests are public: <code>SHA-256(sig_bytes | u64le slot | u64le blockTime | u64le fee)</code> — recompute at <a href="verify.html">verify.html</a>. Same hash, same art, every time, on every machine.</div>
 
 <div class="label">Render any digest</div>
 <div class="paste"><div>
@@ -146,24 +146,24 @@ const TAPS=[
   "note": "demo key · simulated stone"
  },
  {
-  "digest": "da47402f9c00d34530625325ac8f36a49fedc36bd7c3ca38d751b198e2fcb452",
+  "digest": "0c4cfe7fadb259786a09ac5662d3ed59c42684d925ca52b9bfaa27921e21dc00",
   "outcome": "refused",
   "amount": "devnet",
   "time": "2026-10-10",
   "label": "agent alone — refused on-chain",
   "how": "devnet",
-  "sig": "2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD", "pubkey": "5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY", "lamports": 5000, "ts": 1791658484,
-  "note": "real devnet tx · digest = demo-key HMAC over tx ref"
+  "sig": "2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD", "pubkey": "5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY", "lamports": 5000, "ts": 1791658484, "slot": 509637420, "fee": 5000,
+  "note": "real devnet tx · digest = SHA-256(sig|slot|blockTime|fee)"
  },
  {
-  "digest": "aacb5069f4ddf13d6786d243542090507b90f954f949fe4e46946677490550ab",
+  "digest": "73f8fb66c1eba37fdb92d41519ad642eef1680cdee4419771e4b1b73dd64be82",
   "outcome": "approved",
   "amount": "devnet",
   "time": "2026-10-10",
   "label": "ceremony co-sign — landed",
   "how": "devnet",
-  "sig": "2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq", "pubkey": "5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY", "lamports": 10000, "ts": 1791658488,
-  "note": "real devnet tx · digest = demo-key HMAC over tx ref"
+  "sig": "2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq", "pubkey": "5wQ8upNjHi9cg3vAkCBwbhTHzmS4L7rEBqekB6A2AywY", "lamports": 10000, "ts": 1791658488, "slot": 509637436, "fee": 10000,
+  "note": "real devnet tx · digest = SHA-256(sig|slot|blockTime|fee)"
  }
 ]
 ;

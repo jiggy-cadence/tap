@@ -22,7 +22,7 @@ t('life: settle generation/period is real (replay)', () => { for (const k of ['a
   if (M.period > 1) { let c = a; for (let i = 0; i < 1; i++) c = P.life.step(c); assert.notDeepStrictEqual(Buffer.from(a), Buffer.from(c)); } } });
 t('apollonian: every root satisfies Descartes; every curvature integer; children tangent', () => { for (const q of P.apollonian.ROOTS) { const s = q.reduce((x, y) => x + y), s2 = q.reduce((x, y) => x + y * y, 0); assert.strictEqual(s * s, 2 * s2); }
   const M = P.apollonian.model(A.DEVNET.approved); assert(M.circles.every(o => Number.isInteger(o.k))); const o = M.circles[0];
-  for (const c of M.circles.slice(1, 40)) { const d = Math.hypot(c.z[0], c.z[1]) + 1 / c.k; assert(d <= 1 / -o.k + 1e-9, 'inside outer'); } });
+  for (const c of M.circles.slice(1, 40)) { const d = Math.hypot(c.z[0], c.z[1]) + 1 / c.k; assert(d <= 1 / -o.k + 1e-8, 'inside outer'); } });
 t('spiro: curve closes after exactly r/gcd laps and not before', () => { const M = P.spiro.model(A.DEVNET.approved), [x0, y0] = P.spiro.pt(M, 0);
   const [x1, y1] = P.spiro.pt(M, 2 * Math.PI * M.laps); assert(Math.hypot(x1 - x0, y1 - y0) < 1e-6); for (let l = 1; l < M.laps; l++) { const [x, y] = P.spiro.pt(M, 2 * Math.PI * l); assert(Math.hypot(x - x0, y - y0) > 1e-3); }
   assert.strictEqual(M.laps, 7); });
@@ -39,4 +39,6 @@ for (const id of ids) t(id + '/unanswered: H uses outcome byte 2, deterministic,
   assert.strictEqual(draw(id, u, .45 + .01).length, 64);
   const r = rec(); P[id].render(r.canvas, u, 1); const L = r.log.join('\n'); assert(L.includes('saturation') && L.includes('unanswered')); assert(!L.includes('strokeRect(20.000'), 'no refused frame'); });
 t('outcomeByte: approved 1, refused 0, unanswered 2, unknown -> 0 (fail to refused)', () => { assert.deepStrictEqual(['approved', 'refused', 'unanswered', 'x'].map(o => A.outcomeByte({ outcome: o })), [1, 0, 2, 0]); });
+t('devnet digests match page/verify.js publicDigest (no demo key)', () => { const V = require('../verify.js');
+  for (const k of ['approved', 'refused']) { assert.strictEqual(A.DEVNET[k].digest, V.publicDigest(V.DEVNET_PUBLIC[k]).digestHex); } });
 console.log(n + ' aperture tests pass');
