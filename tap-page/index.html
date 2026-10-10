@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAP — your agent can't spend your money unless you're there</title>
+<style>body{font:17px/1.5 ui-monospace,Menlo,monospace;max-width:720px;margin:40px auto;padding:0 18px;background:#f4f1ea;color:#111}
+h1{font-size:30px;border-bottom:4px solid #111}h2{margin-top:2em;text-transform:uppercase;font-size:16px;letter-spacing:.1em}
+.box{border:2px solid #111;padding:12px 16px;margin:12px 0;background:#fff}.no{color:#b00;font-weight:bold}.ok{color:#060;font-weight:bold}
+.warn{border-color:#b00}</style>
+<h1>TAP</h1>
+<p><b>Your agent gets an allowance. Anything bigger needs a tap.</b></p>
+<p>The phone explains, the stone decides.</p>
+<h2>How it works</h2>
+<ol><li>Your agent asks to pay. Small payments inside your daily allowance just go.</li>
+<li>Anything bigger, new recipients, or a "send everything" request needs a tap.</li>
+<li>You hold your phone on the stone. The stone pulses a magnet in a one-time pattern, and the phone's compass sensor reads it. That proves a fresh, live tap — not distance. A relay can still carry it; distance checks (UWB) are on the roadmap.</li>
+<li>The phone shows one plain-English line saying what the payment really does. The approval is tied to that exact payment: every field, including nested ones.</li>
+<li>If anything changes after you tap (amount, recipient, a hidden tip), the signer refuses.</li></ol>
+<h2>What the agent sees when it tries to drain you</h2>
+<div class="box"><span class="no">BLOCKED</span> Your agent wants to send EVERYTHING (10 SOL) to unknown wallet Mall…1111. Blocked: no tap — phone was not at the stone.</div>
+<div class="box"><span class="ok">AUTO</span> Your agent wants to send 0.05 SOL to Alice (coffee fund). Within allowance — no tap needed.</div>
+<h2>Default policy</h2>
+<div class="box">Daily allowance: 0.25 SOL · Per-payment auto limit: 0.10 SOL · Always tap: new recipient, drain, policy change, key export · A tap is good for 30 seconds and one payment.</div>
+<h2>What we do and don't claim</h2>
+<div class="box"><b>Magnet = liveness, not distance.</b> It shows someone is at the stone right now; it does not measure how far away.<br>
+<b>Fresh address per payment = privacy only.</b> On Solana the address is the public key, so it is not quantum protection.<br>
+<b>Post-quantum = roadmap.</b> ML-DSA (NIST FIPS 204) signing is fast enough on ESP32-class chips in published benchmarks; TAP does not ship it yet.<br>
+<b>Allowance = rolling 24 hours,</b> fees included. No midnight reset to game.</div>
+<h2>Honest scope</h2>
+<div class="box warn">This is <b>demo-grade software isolation, not hardware.</b> The signer is a separate module with a narrow interface and a demo key, not a secure element. Devnet transaction: not yet wired. The stone is an ESP32 + ULN2003 driver + a 12 V lock solenoid run at 9 V.</div>
+</html>
