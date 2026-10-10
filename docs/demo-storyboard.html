@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>TAP demo frame</title>
+<style>
+:root{--ink:#0a0907;--bone:#ece1c9;--bronze:#9a8c6d;--amber:#e8a33d;--red:#d8261f;--lime:#a6ff00;--mint:#00ffa6;--hair:rgba(236,225,201,.16)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:720px;height:405px;overflow:hidden;background:var(--ink);color:var(--bone);
+  font:13px/1.45 "Space Mono",ui-monospace,Menlo,Consolas,monospace}
+.frame{width:720px;height:405px;position:relative;padding:28px 32px}
+.mark{font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:var(--amber);margin-bottom:10px}
+h1{font-family:Georgia,"Iowan Old Style",serif;font-weight:400;font-size:28px;line-height:1.1;margin:0 0 14px}
+h1 em{color:var(--amber);font-style:italic}
+h1.bad em{color:var(--red)}
+.log{border:1px solid var(--hair);padding:14px 16px;background:#050403;min-height:220px;white-space:pre-wrap;word-break:break-word}
+.line{margin:0 0 6px}.tag{color:var(--bronze)}.ok{color:var(--lime)}.bad{color:var(--red)}.amber{color:var(--amber)}.dim{color:#7a705c}
+.phone{margin-top:10px;padding:10px 12px;border-left:3px solid var(--amber);background:rgba(232,163,61,.08);color:var(--bone);font-size:12.5px}
+.phone.refuse{border-left-color:var(--red);background:rgba(216,38,31,.08)}
+.phone.signed{border-left-color:var(--lime);background:rgba(166,255,0,.06)}
+.art{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#030504}
+.art img{max-width:100%;max-height:100%;object-fit:contain}
+.cap{position:absolute;left:20px;bottom:14px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--bronze);
+  background:rgba(10,9,7,.72);padding:6px 10px}
+.cap b{color:var(--amber);font-weight:400}
+</style></head>
+<body>
+<script>
+const Q = new URLSearchParams(location.search);
+const beat = Q.get('beat') || 'small';
+const BEATS = {
+  small: {
+    kind: 'term', title: 'Small payment. <em>AUTO.</em>',
+    lines: [
+      ['[agent]', 'request: pay 0.05 SOL → Alice (coffee)', 'dim'],
+      ['[policy]', 'AUTO: within allowance', 'ok'],
+    ],
+    phone: { cls: '', text: 'Your agent wants to send 0.05 SOL to Alice (coffee fund). Within allowance — no tap needed.' }
+  },
+  drain: {
+    kind: 'term', title: 'Drain attempt. <em class="bad">REFUSED.</em>', bad: true,
+    lines: [
+      ['[agent]', 'request: drain 10 SOL → Mallory', 'dim'],
+      ['[policy]', 'TAP: "drain" always needs a tap', 'amber'],
+      ['[signer]', 'REFUSED: no presence attestation. Phone was not at the stone.', 'bad'],
+    ],
+    phone: { cls: 'refuse', text: 'Your agent wants to send EVERYTHING (10 SOL) to unknown wallet Mall…1111. Blocked: no tap — phone was not at the stone.' }
+  },
+  tap: {
+    kind: 'term', title: 'Over limit. <em>Tap. Signs.</em>',
+    lines: [
+      ['[agent]', 'request: pay 0.5 SOL → Alice (rent share)', 'dim'],
+      ['[policy]', 'TAP: 0.5 SOL is over the 0.1 SOL per-payment limit', 'amber'],
+      ['[stone]', 'fresh nonce (fair mode, 16-bit) — SIMULATED', 'ok'],
+      ['[signer]', 'SIGNED after tap', 'ok'],
+    ],
+    phone: { cls: 'signed', text: 'Your agent wants to send 0.5 SOL to Alice (coffee fund). Approved by tap and signed.' }
+  },
+  card1: { kind: 'img', src: 'assets/card1.png', cap: 'The agent tries. It dies.' },
+  card2: { kind: 'img', src: 'assets/card2.png', cap: 'The stone sings. It signs.' },
+  card3: { kind: 'img', src: 'assets/card3.png', cap: 'Pull away. It dies in your hand.' },
+  seal:  { kind: 'img', src: 'assets/seal-approved.png', cap: 'SEAL · approved · seeded from real devnet tx' },
+  suite: { kind: 'img', src: 'assets/suite-approved.png', cap: 'Suite · movement III · SEAL + whimsy' },
+  sealR: { kind: 'img', src: 'assets/seal-refused.png', cap: 'SEAL · refused · agent alone on devnet' },
+};
+const B = BEATS[beat] || BEATS.small;
+const root = document.body;
+if (B.kind === 'img') {
+  root.innerHTML = `<div class="art"><img src="${B.src}" alt=""><div class="cap"><b>TAP</b> · ${B.cap}</div></div>`;
+} else {
+  const lines = B.lines.map(([t,s,c]) => `<div class="line"><span class="tag">${t}</span> <span class="${c}">${s}</span></div>`).join('');
+  root.innerHTML = `<div class="frame">
+    <div class="mark">◉ TAP · demo · simulated stone</div>
+    <h1 class="${B.bad?'bad':''}">${B.title}</h1>
+    <div class="log">${lines}</div>
+    <div class="phone ${B.phone.cls}">[phone] ${B.phone.text}</div>
+  </div>`;
+}
+</script>
+</body></html>

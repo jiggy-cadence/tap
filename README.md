@@ -1,10 +1,15 @@
 # TAP — a physical approval for AI agent wallets
 
+![TAP demo](docs/demo.gif)
+
+*simulated stone; devnet txs in evidence/*
+
 Your agent can spend small amounts inside a rolling 24-hour allowance. Anything bigger, to a new wallet, or a drain needs you to tap your phone on the stone (ESP32 + solenoid).
 
 Colosseum World's Fair 2026 submission. Built during the entry period (Sep 14 – Oct 12, 2026).
 
 ## Layout
+- `sdk/` — `tap-guard.js` agent wrapper (devnet/demo): under-allowance passes through; over-limit returns `{status:'needs_tap', decoderLine}` and waits for `approve()`.
 - `stone/` — Node signer + policy (allowance, domain tag, Solana message-byte signing, plain-English decoder), simulated magnet-nonce channel, tests, `demo.js`, `squads-devnet.js` (devnet only).
 - `firmware/` — `solenoid_blink.ino` (the sketch running on the stone now, with `fire`; Lodestone) and `nonce_pulse.ino` (magnet one-time code, NOT yet bench-tested).
 - `tap-page/` — local demo page.
@@ -14,7 +19,28 @@ Colosseum World's Fair 2026 submission. Built during the entry period (Sep 14 �
 cd stone && npm install
 node tap.test.js && node tap2.test.js && node tap3.test.js && node bump.test.js
 node demo.js small | drain | tap
+cd .. && node sdk/tap-guard.test.js
 ```
+
+
+## Agent wrapper (devnet / demo)
+`sdk/tap-guard.js` wraps your agent's send function with the stone policy + decoder:
+
+```js
+const { guard } = require('./sdk/tap-guard');
+const policy = require('./stone/policy.json');
+
+const send = guard(async (tx) => { /* your send */ return { ok: true }; }, { policy });
+
+const small = await send({ kind: 'pay', to: 'Alice1111111111111111111111111111111111111', amountSol: 0.05 });
+// → { status: 'sent', decoderLine }
+
+const drain = await send({ kind: 'drain', to: 'Mallory1111111111111111111111111111111111', amountSol: 10 });
+// → { status: 'needs_tap', decoderLine, approve, refuse }
+// await drain.approve({ challengeHex }); // after a real tap
+```
+
+Rebuild the README demo GIF (chrome + ffmpeg): `docs/render-demo-gif.sh`.
 
 ## Honest scope
 - Proves liveness at the stone (a fresh tap for this transaction), not physical distance.
