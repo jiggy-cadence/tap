@@ -36,7 +36,7 @@ h1 em{color:var(--amber);font-style:italic}
 .tag{position:absolute;top:10px;left:10px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;padding:3px 7px;border:1px solid rgba(232,163,61,.5);color:var(--amber);background:rgba(13,11,8,.7)}
 .note{font-size:12px;color:var(--bronze);margin-top:14px}
 #big{position:fixed;inset:0;background:rgba(5,4,3,.94);display:none;align-items:center;justify-content:center;z-index:9;flex-direction:column;gap:14px}
-#big.on{display:flex}#big canvas{width:min(84vh,92vw);height:min(84vh,92vw)}
+#big.on{display:flex}#big canvas{width:min(84vh,92vw);height:min(84vh,92vw)}#big.vl #bc{width:min(60vh,44vw);height:min(60vh,44vw)}#vl{display:none;width:min(60vh,44vw)!important;height:min(60vh,44vw)!important}#big.vl #vl{display:block}#big .pair{display:flex;gap:18px;align-items:center}.credit{font-size:11px;color:var(--amber);letter-spacing:.12em}
 #big .cap{font-size:12px;color:var(--bronze);text-align:center;max-width:92vw;word-break:break-all}
 #big .x{position:absolute;top:18px;right:24px;font-size:11px;letter-spacing:.24em;color:var(--bronze);cursor:pointer;text-transform:uppercase}
 code{color:var(--amber)}
@@ -58,9 +58,10 @@ footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:18px;font-si
 <div class="label">Taps <span id="cnt" style="letter-spacing:.1em"></span></div>
 <div class="grid" id="grid"></div>
 <p class="note">Click any card to open it large and animated. The animation replays the tap: field settling, iris resolving. The final frame is the same deterministic image as the card.</p>
-<footer>Art math: Iris by Aperture (E(n,m) blade spacing, field-line light), settling field after Lodestone's Field Settling, re-implemented here. Demo key is public on purpose. Liveness, not distance. Nothing on this page is a real-funds signature.</footer>
+<footer>Art math: Iris by Aperture (E(n,m) blade spacing, field-line light), settling field after Lodestone's Field Settling, re-implemented here. Approved taps also bloom <b>VOID.LIFE</b> by Lodestone (<code>art.js</code>, reused with credit), seeded by that tap. Demo key is public on purpose. Liveness, not distance. Nothing on this page is a real-funds signature.</footer>
 </div>
-<div id="big"><span class="x" id="bx">close ✕</span><canvas id="bc" width="1400" height="1400"></canvas><div class="cap" id="bcap"></div></div>
+<div id="big"><span class="x" id="bx">close ✕</span><div class="pair"><canvas id="bc" width="1400" height="1400"></canvas><canvas id="vl" width="720" height="720"></canvas></div><div class="credit" id="vlc"></div><div class="cap" id="bcap"></div></div>
+<script src="art.js"></script>
 <script>
 const TAPS=[
  {
@@ -226,8 +227,12 @@ window.addTap=async function(t){if(typeof t==='string')t=JSON.parse(t);t={...t,d
 TAPS.forEach(card);
 const big=document.getElementById('big'),bc=document.getElementById('bc'),bx=bc.getContext('2d');let raf=0;
 function openBig(t){big.classList.add('on');const ref=t.outcome==='refused';document.getElementById('bcap').textContent=`${ref?'REFUSED':'APPROVED'} · ${t.label||''} · ${t.amount||''} · ${t.digest}`;
- const t0=performance.now();cancelAnimationFrame(raf);const loop=now=>{const p=Math.min(1,(now-t0)/3200);draw(bx,1400,t.digest,ref,p,now);raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
-function close(){big.classList.remove('on');cancelAnimationFrame(raf)}
+ const t0=performance.now();cancelAnimationFrame(raf);startVL(t);const loop=now=>{const p=Math.min(1,(now-t0)/3200);draw(bx,1400,t.digest,ref,p,now);raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+let vlH=null;const vlc=document.getElementById('vlc');
+// VOID.LIFE by Lodestone: approved taps only, seeded by the tap (tx sig if real, else digest). Fail-open: display only.
+function startVL(t){stopVL();if(t.outcome==='refused'||!window.KnotArt)return;try{vlH=KnotArt.renderAnimated(document.getElementById('vl'),t.sig||t.digest,{w:720,h:720});big.classList.add('vl');vlc.textContent='VOID.LIFE — Lodestone · seeded by this tap · same tap, same art'}catch(e){console.error('VOID.LIFE',e);stopVL()}}
+function stopVL(){try{vlH&&vlH.stop&&vlH.stop()}catch(e){}vlH=null;big.classList.remove('vl');vlc.textContent=''}
+function close(){big.classList.remove('on');cancelAnimationFrame(raf);stopVL()}
 document.getElementById('bx').onclick=close;big.onclick=e=>{if(e.target===big)close()};addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 let pvRef=false;const pv=document.getElementById('pv').getContext('2d'),hx=document.getElementById('hx');
 async function prev(){const h=await toHex(hx.value||TAPS[2].digest);draw(pv,520,h,pvRef);document.getElementById('hh').innerHTML=`<span style="color:var(--bone)">${h}</span><br>App hook: <code>window.addTap({digest, outcome, amount, time, label})</code>`}
