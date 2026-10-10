@@ -5,7 +5,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "test": "node vault.test.js && node canon.test.js && node shamir.test.js && node executors.test.js && node squads.test.js && node cosign.test.js",
+    "test": "node vault.test.js && node canon.test.js && node shamir.test.js && node executors.test.js && node squads.test.js && node cosign.test.js && node squads-type.test.js",
     "e2e": "node e2e-devnet.js",
     "e2e:squads": "node e2e-squads-devnet.js"
   },

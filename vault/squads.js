@@ -67,6 +67,10 @@ async function squads_vault_transfer(intent, S, pol, conn) {
   // 1. read what the agent actually put on chain
   const info = await conn.getAccountInfo(transactionPda, 'confirmed');
   if (!info) throw new Error(`squads_vault_transfer: no VaultTransaction at index ${intent.transactionIndex}`);
+  // The SDK decoder does NOT check the 8-byte account discriminator: a ConfigTransaction at this index
+  // (e.g. ChangeThreshold → 1) was only refused because decoding happened to crash. Check type explicitly.
+  if (!info.owner.equals(multisig.PROGRAM_ID)) throw new Error('squads_vault_transfer: account at index is not owned by the Squads program');
+  if (!Buffer.from(info.data.subarray(0, 8)).equals(Buffer.from(multisig.generated.vaultTransactionDiscriminator))) throw new Error('squads_vault_transfer: account at index is not a VaultTransaction (config/batch proposal?)');
   const [vt] = multisig.accounts.VaultTransaction.fromAccountInfo(info);
   if (!vt.multisig.equals(multisigPda)) throw new Error('squads_vault_transfer: VaultTransaction belongs to another multisig');
   if (vt.vaultIndex !== vaultIndex) throw new Error('squads_vault_transfer: VaultTransaction targets another vault');
