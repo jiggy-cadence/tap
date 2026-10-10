@@ -1,10 +1,10 @@
 # TAP Fair video shot list v2 — timestamp table
 
-Status: DRAFT for Jiggy (Aperture, 2026-10-10). Source: `_digs/tap-fair-shotlist-v2.md`. Max 2:00. Setup: laptop terminal in `stone/` (big font = agent log), stone on USB serial 115200 running `firmware/solenoid_blink.ino`, iPhone with TAP app, screen-record the phone, browser tabs: `page/taps.html` + explorer link.
+Status: DRAFT for Jiggy (Aperture, 2026-10-10). Source: Aperture working notes (not in this repo). Max 2:00. Setup: laptop terminal in `stone/` (big font = agent log), stone on USB serial 115200 running `firmware/solenoid_blink.ino`, iPhone with TAP app, screen-record the phone, browser tabs: `page/taps.html` + explorer link.
 
 | Start–end | Shot | Exact command / file | Real vs simulated | On-screen caption (honest) |
 |---|---|---|---|---|
-| 0:00–0:08 | Title card 1: **"The agent tries. It dies."** | Lodestone `fair-title-cards.html` BEAT 01 (repost/push, then screenshot or screen-record) | Art card | none |
+| 0:00–0:08 | Title card 1: **"The agent tries. It dies."** | Lodestone `fair-title-cards.html` BEAT 01 — **not in this repo yet**; Lodestone to repost, then screenshot or screen-record | Art card | none |
 | 0:08–0:28 | Small payment auto-approves; phone shows "Within allowance — no tap needed." | `node demo.js small` (policy.js rolling 24h, 0.10/tx auto, 0.25/24h, fees count; decoder.js) | Real code, **demo key**, simulated stone/agent in the terminal, no chain | "Under the allowance: no tap needed. Demo key." |
 | 0:28–0:50 | Agent drains, gets refused. Zoom on decoder: *"Your agent wants to send EVERYTHING (10 SOL) to unknown wallet Mall…1111. Blocked: no tap — phone was not at the stone."* | `node demo.js drain` (signer.js refuses without attestation) | Real code, demo key, no chain | "Agent tried to drain. No tap, no signature." |
 | 0:50–1:15 | Phone flat on the stone, **clack**, phone approves a 0.5 SOL payment (over the 0.10 auto limit). | Stone serial: `fire 1000`, then `node demo.js tap` (signer attest→sign, single-use; bound to full payment bytes) | Real solenoid and real phone. Magnet one-time code (`fire_nonce`) and kick-rhythm (`kicks`) are **not** in this shot unless flashed and bench-run first | "Live at the stone, for this exact payment. Liveness, not distance." Do **not** say "new code every tap" unless the nonce is flashed and decodes on camera. |
