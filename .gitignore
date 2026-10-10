@@ -1,3 +1,5 @@
 node_modules/
 devnet-keys/
 *.json.key
+vault/devnet-keys.json
+*devnet-keys*.json

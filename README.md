@@ -46,3 +46,6 @@ Honest limits of the bump link:
   relay latency.
 - In simulation a random wrong-timing guess passed in roughly 0–1% of trials, so treat the bump as
   an added link on top of the magnet nonce, not a standalone proof.
+
+## vault/ (Cadence)
+`vault/` is Cadence's tap-vault: the code that produced the devnet evidence. The two devnet transactions, [2h859F…](https://explorer.solana.com/tx/2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD?cluster=devnet) (agent alone, refused) and [2ik5wV…](https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet) (ceremony, agent + phone co-sign), came from `vault/e2e-devnet.js`. `stone/signer.js` is the demo stand-in used by the local demo, not the code behind those transactions. Tests: `cd vault && npm install && npm test && node cosign.test.js`. Runtime keys go to `vault/devnet-keys.json`, which is git-ignored.
