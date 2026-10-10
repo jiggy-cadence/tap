@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "note": "DEMO policy. Agent gets an allowance; anything bigger needs a tap.",
+  "dailyAllowanceSol": 0.25,
+  "perTxAutoMaxSol": 0.10,
+  "alwaysTap": ["new_recipient", "drain", "change_policy", "export_key"],
+  "allowedRecipients": { "Alice1111111111111111111111111111111111111": "Alice (coffee fund)" },
+  "tapTtlMs": 30000
+}
