@@ -38,18 +38,19 @@ a{color:var(--amber)}
 </div>
 <div class="honest"><b>Honest rule.</b> The art never gates, delays or alters a payment. It is drawn after the decision, only from public tap data (digest, signature, pubkey, lamports, time, outcome), and anyone can recompute it from the panel above. The two devnet taps are real transactions from Cadence's vault (<a href="https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet">approved</a> · <a href="https://explorer.solana.com/tx/2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD?cluster=devnet">refused</a>); their digests are public: SHA-256(sig_bytes | u64le slot | u64le blockTime | u64le fee) — see <a href="verify.html">verify.html</a>. Outcome byte in every piece H: approved=1, refused=0, unanswered=2. The unanswered tap is a labelled demo: no transaction exists for a request nobody tapped, so its signature is 64 zero bytes; its digest is SHA-256("TAP-unanswered-v1"‖pubkey‖lamports‖ts) — third preset on <a href="verify.html">verify.html</a>. The hero tap (<a href="https://explorer.solana.com/tx/rJRY77eUMuy4bPkZ8sWhRQBqDDfokhsUyhuE14CBHeTZz87WiYehvGg7FkavguYUDdkHD7gKMyJaBXyXNRtfALT?cluster=devnet">rJRY77eU…</a>) carries a TAP1 receipt memo: its core art comes from the receipt, its border, kicks and timing from the signature. The receipt proves the phone signed this intent, not that a human was at the stone. SEAL's curve is a toy curve over F<sub>1021</sub>, not Ed25519. Liveness, not distance.</div>
 </div>
-<script src="art.js"></script><script src="seal.js"></script><script src="verify-receipt-browser.js"></script><script src="iris.js"></script>
+<script src="art.js"></script><script src="seal.js"></script><script src="verify-receipt-browser.js"></script><script src="iris.js"></script><script src="vowfield.js"></script>
 <script src="aperture/common.js"></script><script src="aperture/truchet.js"></script><script src="aperture/life.js"></script><script src="aperture/apollonian.js"></script><script src="aperture/spiro.js"></script><script src="aperture/langton.js"></script>
 <script>
 // Conductor. Optional ?t=<seconds>&tap=approved|refused renders one frozen frame (for headless stills).
-const Q=new URLSearchParams(location.search),c=document.getElementById('c'),ctx=c.getContext('2d'),W=c.width,DUR=20;
+const Q=new URLSearchParams(location.search),c=document.getElementById('c'),ctx=c.getContext('2d'),W=c.width,DUR=22.5;
 let tap=SEAL.DEVNET[['refused','unanswered','approved'].includes(Q.get('tap'))?Q.get('tap'):'hero'],cache={},raf=0;
 const WHIM=['truchet','life','apollonian','spiro','langton'];
 // Movements: [start,end,numeral,title,credit]
 const MV=[[0,3,'I','Explainer','the decoder line: what was asked, what was decided'],
  [3,8,'II','Physics','VOID.LIFE by Lodestone (art.js, rendezvous mode): two fields meet where the tap happened. Lodestone\'s 9 other pieces join here once pushed.'],
- [8,16,'III','Threshold','SEAL by Aperture → Iris by Aperture → whimsy cuts by Aperture (Truchet Receipt, Conway\'s Ledger, Apollonian Seal, Spirograph of Lamports, Langton\'s Courier)'],
- [16,20,'IV','Void','Cadence: "The void is not empty. It\'s the key that never moved, because nobody tapped."']];
+ [8,10.5,'II→III','Vow Field','Vow Field by Lodestone × Aperture (vowfield.js): dipoles placed by the receipt, RK4 field lines settling into basins, the curve walk as a particle (deflection is a metaphor), B-H loop driven by the kicks.'],
+ [10.5,18.5,'III','Threshold','SEAL by Aperture → Iris by Aperture → whimsy cuts by Aperture (Truchet Receipt, Conway\'s Ledger, Apollonian Seal, Spirograph of Lamports, Langton\'s Courier)'],
+ [18.5,22.5,'IV','Void','Cadence: "The void is not empty. It\'s the key that never moved, because nobody tapped."']];
 const ease=x=>x<0?0:x>1?1:1-Math.pow(1-x,3);
 function safe(name,fn){try{fn()}catch(e){console.error(name,e);ctx.fillStyle='#050403';ctx.fillRect(0,0,W,W);txt(name+' could not render this tap',W/2,W/2,18,'#9a8c6d')}}
 function txt(s,x,y,sz,col,al='center',font='"Space Mono",ui-monospace,monospace'){ctx.font=sz+'px '+font;ctx.fillStyle=col;ctx.textAlign=al;ctx.fillText(s,x,y)}
@@ -70,16 +71,17 @@ function vlWrap(u){const img=voidLife(),H=SEAL.model(tap).H,gap=W*(.05+parseInt(
   [W/2-gap/2,W/2+gap/2].forEach(x=>{ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,W);ctx.stroke()});return}
  ctx.globalAlpha=ease(u*1.6);const s=1.04-.04*u;ctx.drawImage(img,W*(1-s)/2,W*(1-s)/2,W*s,W*s);ctx.globalAlpha=1}
 function frameAt(t){ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.fillStyle='#050403';ctx.fillRect(0,0,W,W);
- const m=MV.findIndex(v=>t<v[1]),i=m<0?3:m,[s,e]=MV[i],u=(t-s)/(e-s);
+ const m=MV.findIndex(v=>t<v[1]),i=m<0?MV.length-1:m,[s,e]=MV[i],u=(t-s)/(e-s);
  if(i===0)safe('Explainer',()=>{const L=decoder();txt('I · EXPLAINER',W/2,W*.3,14,'#9a8c6d');ctx.globalAlpha=ease(u*2);wrap(L[0],W/2,W*.45,32,'#ece1c9',W*.8,42);ctx.globalAlpha=ease(u*2-.7);wrap(L[1],W/2,W*.6,32,ref()?'#ff6a5f':'#e8a33d',W*.8,42);ctx.globalAlpha=1;txt(tap.label||'',W/2,W*.82,13,'#7d7259')});
  if(i===1)safe('VOID.LIFE',()=>{vlWrap(u);txt('II · PHYSICS · VOID.LIFE · Lodestone',24,W-22,13,'#9a8c6d','left')});
- if(i===2){const tt=t-8;
+ if(i===3){const tt=t-10.5;
   if(tt<3)safe('SEAL',()=>{SEAL.render(ctx,SEAL.model(tap),W,ease(tt/(SEAL.model(tap).revealMs/1000*.87)))});
   else if(tt<5&&una())safe('Iris',()=>{IRIS.draw(ctx,W,tap.digest,true,0,tt*1000);ctx.fillStyle='rgba(5,4,3,'+(.3+.3*(tt-3)/2)+')';ctx.fillRect(0,0,W,W)});
   else if(tt<5)safe('Iris',()=>IRIS.draw(ctx,W,tap.digest,ref(),Math.min(1,(tt-3)/1.8),tt*1000));
   else{const k=Math.min(4,Math.floor((tt-5)/.6)),P=APERTURE.pieces[WHIM[k]];safe(P?P.name:WHIM[k],()=>P.render(c,tap,Math.min(1,((tt-5)-k*.6)/.5+.2)))}
   txt('III · THRESHOLD',24,W-22,13,'#9a8c6d','left')}
- if(i===3)safe('Void',()=>{const a=ease(u*1.5);ctx.fillStyle='#030303';ctx.fillRect(0,0,W,W);
+ if(i===2)safe('Vow Field',()=>{if(!tap.receipt){txt('VOW FIELD needs a TAP1 receipt; this tap carries none',W/2,W/2,16,'#9a8c6d');return}VOWFIELD.render(ctx,VOWFIELD.model(tap),W,ease(u*1.15));txt('II→III · VOW FIELD · Lodestone × Aperture',24,W-22,13,'#9a8c6d','left')});
+ if(i===4)safe('Void',()=>{const a=ease(u*1.5);ctx.fillStyle='#030303';ctx.fillRect(0,0,W,W);
   const g=ctx.createRadialGradient(W/2,W/2,0,W/2,W/2,W*.22);g.addColorStop(0,`rgba(140,150,150,${.22*(1-a*.7)})`);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,W);
   ctx.strokeStyle=`rgba(180,190,190,${.5-.3*a})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(W/2,W/2,W*.09,0,7);ctx.stroke();
   txt('IV · VOID · Cadence',W/2,W*.22,14,'#9a8c6d');

@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Vow Field · Lodestone × Aperture</title>
+<style>html,body{margin:0;background:#0d0b08;color:#ece1c9;font:13px "Space Mono",ui-monospace,monospace}canvas{display:block;width:min(100vw,100vh);height:auto;margin:0 auto}
+.bar{text-align:center;padding:10px;color:#9a8c6d}.bar a{color:#e8a33d;margin:0 8px;cursor:pointer}pre{max-width:1000px;margin:10px auto;color:#9a8c6d;white-space:pre-wrap;padding:0 16px}
+body.still .bar,body.still pre{display:none}</style></head><body>
+<div class="bar">VOW FIELD · ◉ Lodestone × Aperture · <a data-k="approved">approved (rJRY77)</a><a data-k="refused">refused (demo)</a><a data-k="unanswered">unanswered (demo)</a></div>
+<canvas id="c" width="1600" height="1600"></canvas><pre id="v"></pre>
+<script src="seal.js"></script><script src="vowfield.js"></script>
+<script>const q=new URLSearchParams(location.search),c=document.getElementById('c');let h;
+function go(k){h&&h.stop();const t=VOWFIELD.TAPS[k];let M;if(q.has('still')){M=VOWFIELD.model(t);VOWFIELD.render(c.getContext('2d'),M,1600,1)}else{h=VOWFIELD.animate(c,t);M=h.model}
+document.getElementById('v').textContent='VERIFY YOURSELF\n'+VOWFIELD.verifyLines(M).join('\n')+'\nreceipt '+M.receipt+'\nsig '+M.sigHex+'\ncore input '+M.coreInHex+'\nevent input '+M.evInHex+'\nThe receipt is the vow (what was approved); the signature is the event (when it landed). Art never decides a payment.'}
+if(q.has('still'))document.body.classList.add('still');document.querySelectorAll('[data-k]').forEach(a=>a.onclick=()=>go(a.dataset.k));go(q.get('tap')||'approved');window.READY=1</script></body></html>
