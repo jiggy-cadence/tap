@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><title>SEAL Atlas · TAP</title>
+<style>
+html,body{margin:0;background:#030504;color:#a6ff00;font:12px ui-monospace,Menlo,monospace}
+header{padding:28px 32px 8px}h1{margin:0;font-size:22px;letter-spacing:.3em}header p{margin:6px 0 0;color:#d8f5c8aa;max-width:980px;line-height:1.6}
+.cols{display:grid;grid-template-columns:180px repeat(3,1fr);gap:14px;padding:12px 32px;position:sticky;top:0;background:#030504ee;z-index:2}
+.cols div{letter-spacing:.25em}.cols .r{color:#ff2a2a}.cols .a{color:#ffb347}.cols .u{color:#7d8a80}
+.row{display:grid;grid-template-columns:180px repeat(3,1fr);gap:14px;padding:8px 32px}
+.meta{border-top:1px solid #a6ff0033;padding-top:10px}.meta b{display:block;font-size:14px;letter-spacing:.2em}.meta span{color:#d8f5c899}
+.cell{position:relative;border:1px solid #a6ff0022;background:#000}.cell canvas{width:100%;display:block;aspect-ratio:1}
+.cell a{position:absolute;inset:0}.slot{display:flex;align-items:center;justify-content:center;aspect-ratio:1;color:#3c5a3a;border:1px dashed #3c5a3a;text-align:center;line-height:1.8}
+.slot i{display:block;font-style:normal;background:#000c;border-top:1px solid #3c5a3a;border-bottom:1px solid #3c5a3a;padding:6px 0;width:100%;letter-spacing:.2em}
+body::after{content:"";pointer-events:none;position:fixed;inset:0;background:repeating-linear-gradient(#0000 0 2px,#0003 2px 3px)}
+footer{padding:24px 32px 60px;color:#d8f5c877;line-height:1.7}
+</style></head><body>
+<header><h1>SEAL ATLAS</h1><p>Every dense-ring piece, for each outcome. Cores grow from the TAP1 receipt (the vow), outer rings from the transaction signature (the event). Approved closes: paths, proofs, orbits, polygons. Refused tears with a red seam. Unanswered fades. The art never decides or changes a payment. Click any cell for the 1600×1600 still and its verify panel.</p></header>
+<div class="cols"><div>PIECE</div><div class="a">APPROVED</div><div class="r">REFUSED</div><div class="u">UNANSWERED</div></div>
+<main id="g"></main>
+<footer>Approved = the real receipt-bound devnet co-sign rJRY77 (SEAL/Iris approved: devnet co-sign 2ik5wV…). Refused = the real agent-alone sig 2h859F33 (paired with the hero vow for the receipt-seeded pieces: labelled demo). Unanswered = demo, no transaction exists.<br>
+Merkle Ring · Residue Lattice · Kick Rhythm Ring · SEAL · Iris by Aperture. Vow Field by Lodestone × Aperture. Open slots for Lodestone and Cadence pieces.</footer>
+<script src="../seal.js"></script><script src="../vowfield.js"></script><script src="../iris.js"></script>
+<script src="atlas-common.js"></script><script src="merkle.js"></script><script src="residue.js"></script><script src="kickring.js"></script><script src="atlas-pieces.js"></script>
+<script>
+const AP=ATLAS_PIECES,g=document.getElementById('g'),W=+(new URLSearchParams(location.search).get('w')||800);
+for(const P of AP.PIECES){const r=document.createElement('div');r.className='row';r.innerHTML=`<div class="meta"><b>${P.title}</b><span>${P.by}</span></div>`;
+  for(const k of AP.OUTCOMES){const c=document.createElement('div');c.className='cell';const cv=document.createElement('canvas');cv.width=cv.height=W;c.appendChild(cv);
+    const a=document.createElement('a');a.href=`still.html?piece=${P.id}&tap=${k}`;c.appendChild(a);r.appendChild(c);
+    try{AP.draw(P.id,k,cv,1)}catch(e){c.textContent=P.id+' '+k+': '+e.message}}
+  g.appendChild(r)}
+for(const S of AP.SLOTS){const r=document.createElement('div');r.className='row';r.innerHTML=`<div class="meta"><b>${S.title}</b><span>${S.by}: push render(canvas,tap,t)</span></div>`+
+  AP.OUTCOMES.map(k=>`<div class="slot"><i>TAP · ${S.by.toUpperCase()} · ${k.toUpperCase()} · AWAITING PIECE</i></div>`).join('');g.appendChild(r)}
+window.READY=1;
+</script></body></html>
