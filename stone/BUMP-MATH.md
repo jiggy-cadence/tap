@@ -26,6 +26,9 @@ Allowing one missed kick (for 50 Hz sampling) is what costs the bits. Measured (
 
 Forgiving one kick in six costs about 7 bits (roughly 170×). Proposal: **10 kicks, 9 must match.** It keeps the forgiveness, the measured floor rises past 15 bits, and the ritual lasts about four seconds.
 
+## CORRECTION (2026-10-11 02:05Z): these odds assume the attacker does NOT know the nonce
+The schedule is **unkeyed** SHA-256("TAP-bump-v1:"+nonce) (`stone/bump.js:29`, firmware `sha256_once`), and the stone prints the nonce over serial. Anyone who sees the nonce knows the rhythm exactly. **Today the bump proves liveness (a physical kick happened) and adds no secrecy.** Fix: key it, schedule = HMAC-SHA256(K, "TAP-bump-v2:"+nonce). Then the bump and the magnet answer multiply: 16-bit magnet 1 in 386 → **1 in 90,707**; 32-bit magnet 1 in 13M → **1 in 3.06 billion** (10 tries, t=1). See the wire, 02:05Z.
+
 ## Scope (honest)
 - The bump is one layer. The magnet HMAC nonce gates it first (`presence()` requires both), and the escalating lockout in `vault/MATH.md` caps total tries. These odds are for the **bump alone**, per attempt.
 - Simulated kicks, not a bench capture. The real miss rate at 50 Hz is unmeasured. If it exceeds about 1 in 10 per kick, 9 of 10 will reject honest taps, so bench it before changing the default.
