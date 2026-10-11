@@ -1,11 +1,11 @@
 /* SEAL Atlas LIVE — Aperture, round 3. Every piece animated with its math running on screen, deterministic from the tap.
  *   frame(id, outcome, ctx, W, t): pure function of (piece, tap, t seconds). No clock, no Math.random. Loop = LOOP s.
  *   0 .. REVEAL s  : the piece builds (its own reveal p = t/REVEAL), plus a live layer showing the computation in progress.
- *   REVEAL .. LOOP : the finished piece stays; the live layer keeps running (particles, playhead, orbit comet, pulses).
+ *   REVEAL .. LOOP : the finished piece stays; the live layer keeps running (tracers, playhead, orbit comet, pulses).
  *   SEAL    the 64 SHA-256 rounds of H compute one per tick; the current round's 256 state bits flash, flipped bits white; a spark hops k·G.
  *   MERKLE  hashes bubble leaf -> root level by level (each level lights when its children are hashed); then the proof path climbs.
  *   KICK    a playhead sweeps the bar in real milliseconds; each kick fires as it is crossed; the Euclidean necklace rotations spin.
- *   VOWFIELD particles ride the RK4 field lines into their basins; a dot traces the B-H loop, flashing on each kick.
+ *   VOWFIELD tracers (uniform speed, direction only: not a flow measurement) ride the RK4 field lines into their basins; a dot traces the B-H loop, flashing on each kick.
  *   round 4 (not rings, painted directly, each file has its own frame(t)):
  *   EDWARDS  twisted Edwards curve over F_p, every point; double-and-add k·G hops live toward the vow point Q.
  *   GRAYSCOTT reaction–diffusion field seeded by the receipt, F/k from the sig, a probe reads u, v, ∇²v live.
@@ -107,7 +107,7 @@ const LIVE = {
     glow(ctx, hxp(pt[0]), hyp(pt[1]), 14 * s, k === 'refused' && u > end - .03 ? 'rgba(255,42,42,.95)' : 'rgba(255,220,160,.95)');
     M.hyst.kicksT.forEach(kt => { const d = Math.abs(u - kt); if (d < .03 && kt <= end) glow(ctx, hxp(Lp[Math.round(kt * n)][0]), hyp(Lp[Math.round(kt * n)][1]), 30 * s * (1 - d / .03), 'rgba(232,163,61,.9)'); });
     ctx.restore();
-    label(ctx, W, [`RK4 streamlines · ${M.lines.length} lines · |B| ∝ 1/r³`, `B-H tracer phase ${(u).toFixed(3)} · H=${pt[0].toFixed(2)} B=${pt[1].toFixed(2)}`, k === 'approved' ? 'loop closes ✓' : k === 'refused' ? 'loop tears open' : 'loop fades'], k, 215); } };
+    label(ctx, W, [`RK4 streamlines · ${M.lines.length} lines · |B| ∝ 1/r³ · tracers: direction only`, `B-H tracer phase ${(u).toFixed(3)} · H=${pt[0].toFixed(2)} B=${pt[1].toFixed(2)}`, k === 'approved' ? 'loop closes ✓' : k === 'refused' ? 'loop tears open' : 'loop fades'], k, 215); } };
 // frame t (seconds, wraps at LOOP). still = false on purpose: this is the live frame.
 function frame(id, k, ctx0, W, t) { t = ((t % LOOP) + LOOP) % LOOP; const P = A.palette(id, paletteTap(id, k)), M = modelOf(id, k);
   if (R4[id]) { R4[id].draw(ctx0, M, W, t); return P; }   // round 4: own chrome, caption and loop fade
