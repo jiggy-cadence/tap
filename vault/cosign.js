@@ -12,7 +12,8 @@ const { canon } = require('./canon');
 // The tap receipt written INTO the tx: "TAP1:" + sha256("TAP1|" + canon(stored intent)). Anyone can recompute it
 // from the intent and see it on the explorer. The phone only signs if the memo is exactly this (or, unless
 // intent.requireMemo, absent), so the agent cannot put a false receipt on chain under the phone signature.
-const tapMemo = intent => { const { requireMemo, ...rest } = intent; const h = require('crypto').createHash('sha256').update('TAP1|' + canon(rest)).digest('hex');
+// requireMemo and nonceAccount are transport details, not economics: kept out of the receipt
+const tapMemo = intent => { const { requireMemo, nonceAccount, ...rest } = intent; const h = require('crypto').createHash('sha256').update('TAP1|' + canon(rest)).digest('hex');
   return rest.tapId ? `TAP1:${rest.tapId}:${h}` : `TAP1:${h}`; };   // tapId rides in the memo so verifiers can rebuild the intent
 const memoIx = intent => new web3.TransactionInstruction({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(tapMemo(intent)) });
 
@@ -36,7 +37,19 @@ function inspect(msgBytes, intent, phonePubkey) {
   if (memos.length > 1) return { ok: false, why: 'more than one memo' };
   if (memos.length && (memos[0].keys.length || !memos[0].data.equals(Buffer.from(tapMemo(intent))))) return { ok: false, why: 'memo is not this tap receipt' };
   if (!memos.length && intent.requireMemo) return { ok: false, why: 'tap receipt memo missing' };
-  const token = ixs.filter(ix => !ALLOWED_EXTRA.has(ix.programId.toBase58()) && !ix.programId.equals(MEMO_PROGRAM));
+  // DURABLE NONCE (offline / Faraday signing outlives the ~60-90 s blockhash window). Allowed ONLY when the
+  // stored intent names the nonce account AND its authority is the PHONE: then the human can cancel any
+  // signed-but-unsent tx by advancing the nonce, and the agent can't stockpile signatures that never expire.
+  const isAdvance = x => x.programId.equals(web3.SystemProgram.programId) && x.data.length === 4 && x.data.readUInt32LE(0) === 4;
+  const adv = ixs.filter(isAdvance);
+  if (adv.length) {
+    if (adv.length > 1 || ixs[0] !== adv[0]) return { ok: false, why: 'nonce advance must be the single first instruction' };
+    if (!intent.nonceAccount) return { ok: false, why: 'durable nonce not approved for this tap (signature would never expire)' };
+    const [nAcc, , nAuth] = adv[0].keys;
+    if (!nAcc || nAcc.pubkey.toBase58() !== intent.nonceAccount) return { ok: false, why: 'nonce account is not the approved one' };
+    if (!nAuth || nAuth.pubkey.toBase58() !== phonePubkey) return { ok: false, why: 'nonce authority is not the phone (the agent could hoard signatures)' };
+  }
+  const token = ixs.filter(ix => !ALLOWED_EXTRA.has(ix.programId.toBase58()) && !ix.programId.equals(MEMO_PROGRAM) && !adv.includes(ix));
   if (token.length !== 1) return { ok: false, why: `expected exactly 1 token instruction, got ${token.length}` };
   const ix = token[0];
   if (!ix.programId.equals(spl.TOKEN_PROGRAM_ID)) return { ok: false, why: 'not the SPL Token program' };

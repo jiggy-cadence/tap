@@ -57,5 +57,14 @@ ok('receipt memo + requireMemo → signed (flag not in digest)', cosign(build([t
   ok("single-use: a SECOND real tap for the same payment → signed", once(mk(i2), i2, phone).ok);
   const r3 = once(build([tc(), memoIx(intent)]), intent, phone); ok("single-use: intent without tapId → REFUSED" + (r3.ok ? "" : ` (${r3.refused})`), !r3.ok && /tapId/.test(r3.refused));
 }
+{ // durable nonce: only with a phone-controlled nonce named in the stored intent
+  const nonceAcc = kp().publicKey;
+  const withNonce = (auth, acc = nonceAcc) => { const t = new web3.Transaction({ feePayer: agent.publicKey, recentBlockhash: BH }); t.add(web3.SystemProgram.nonceAdvance({ noncePubkey: acc, authorizedPubkey: auth }), tc()); return t.serializeMessage(); };
+  const ni = { ...intent, nonceAccount: nonceAcc.toBase58() };
+  ok("durable nonce, PHONE is the authority, approved account → signed", cosign(withNonce(phone.publicKey), ni, phone).ok);
+  { const r = cosign(withNonce(agent.publicKey), ni, phone); ok("durable nonce, AGENT is the authority → REFUSED" + (r.ok ? "" : ` (${r.refused})`), !r.ok && /authority is not the phone/.test(r.refused)); }
+  { const r = cosign(withNonce(phone.publicKey, evil), ni, phone); ok("durable nonce, swapped nonce account → REFUSED" + (r.ok ? "" : ` (${r.refused})`), !r.ok && /not the approved one/.test(r.refused)); }
+  { const r = cosign(withNonce(phone.publicKey), intent, phone); ok("durable nonce not approved in the tap → REFUSED" + (r.ok ? "" : ` (${r.refused})`), !r.ok && /not approved for this tap/.test(r.refused)); }
+}
 refused('garbage bytes', Buffer.from('not a solana message at all, nope'));
 console.log(`${pass}/${pass + fail} pass`); process.exitCode = fail ? 1 : 0;
