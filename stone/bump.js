@@ -23,10 +23,22 @@ const crypto = require('crypto');
 const DEFAULTS = { kicks: 6, minMatched: 5 /* tolerate one kick lost to 50 Hz sampling */, minGapMs: 200, maxGapMs: 700, kickMs: 40, toleranceMs: 30,
   threshold: 0.45 /* m/s^2 above baseline */, refractoryMs: 120, maxExtraPeaks: 2 };
 
-// Kick schedule (ms offsets from first kick) derived from the nonce: domain-separated SHA-256.
+// Kick schedule (ms offsets from first kick) derived from the nonce.
+// KEYED (BUMP-MATH.md correction 2026-10-11): pass opts.key (Buffer or 64-hex)
+// and the schedule becomes HMAC-SHA256(key, "TAP-bump-v2:"+nonce) — forging it
+// needs the stone key, so the bump bits multiply with the magnet answer.
+// Without opts.key the legacy unkeyed SHA-256("TAP-bump-v1:"+nonce) path is
+// kept for the bench tools and the sims (all existing callers unchanged).
 function scheduleFromNonce(nonce, opts = {}) {
   const o = { ...DEFAULTS, ...opts };
-  const h = crypto.createHash('sha256').update('TAP-bump-v1:' + String(nonce >>> 0)).digest();
+  let h;
+  if (o.key) {
+    const kb = Buffer.isBuffer(o.key) ? o.key : Buffer.from(String(o.key).replace(/^0x/, ''), 'hex');
+    if (kb.length !== 32) throw new Error('scheduleFromNonce: opts.key must be 32 bytes');
+    h = crypto.createHmac('sha256', kb).update('TAP-bump-v2:' + String(nonce >>> 0)).digest();
+  } else {
+    h = crypto.createHash('sha256').update('TAP-bump-v1:' + String(nonce >>> 0)).digest();
+  }
   const out = [0]; let t = 0;
   for (let i = 1; i < o.kicks; i++) { const r = h.readUInt16BE(2 * i) / 65535; t += Math.round(o.minGapMs + r * (o.maxGapMs - o.minGapMs)); out.push(t); }
   return out;
