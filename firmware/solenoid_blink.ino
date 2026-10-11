@@ -45,9 +45,6 @@
 #include "bootloader_random.h"  // SAR-ADC entropy for esp_random() with Wi-Fi/BT off (ESP-IDF RNG docs)
 #include "stone_safety.h"       // key_is_weak() + coil thermal bucket; host-tested in firmware/test/
 
-#ifndef TAP_DEBUG
-#define TAP_DEBUG 0             // 1 = print KEY + DIGEST on serial. Bench only; never ship, never film.
-#endif
 #define PIN_PROVISION 0         // GPIO0 = the devkit's BOOT button; must be held to re-key
 // 2026-10-10 Aperture safety pass. Compile status: see firmware/COMPILE.md.
 // NOT RUN ON HARDWARE. Lodestone: please review before Jiggy flashes.
@@ -140,10 +137,7 @@ static void printHex(const uint8_t *buf, size_t n) {
 
 // Transmit one bit via on/off keying. Returns the wall-clock start of the symbol.
 static void sendBit(int bit, unsigned long &t) {
-  Serial.print(F("SYM bit="));
-  Serial.print(bit);
-  Serial.print(F(" t="));
-  Serial.println(t);
+  // No per-bit serial output: printing each bit is printing the answer to the USB host.
   if (bit == 1 && !coilAllow(symbolMs)) { delay(symbolMs); t += symbolMs; return; }
   drive(bit == 1);
   delay(symbolMs);
@@ -162,14 +156,8 @@ static void ceremony(const uint8_t challenge[32]) {
 
   Serial.print(F("CHAL "));
   printHex(challenge, 32);
-#if TAP_DEBUG
-  // DEBUG BUILDS ONLY. Printing the key lets anything on the USB host (a compromised agent included)
-  // clone the stone, and puts the key in any screen recording. Never ship or film with TAP_DEBUG=1.
-  Serial.print(F("KEY "));
-  printHex(sessionKey, 32);
-  Serial.print(F("DIGEST "));
-  printHex(digest, 32);
-#endif
+  // The key, the digest and the answer bits are NEVER printed, in any build: anything on the USB host
+  // (a compromised agent included) could clone the stone, and the key would land in screen recordings.
   Serial.println(F("CEREMONY start"));
 
   unsigned long t = millis();
