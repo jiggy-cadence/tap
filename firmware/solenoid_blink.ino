@@ -44,6 +44,11 @@
 #include <mbedtls/md.h>
 #include "bootloader_random.h"  // SAR-ADC entropy for esp_random() with Wi-Fi/BT off (ESP-IDF RNG docs)
 #include "stone_safety.h"       // key_is_weak() + coil thermal bucket; host-tested in firmware/test/
+
+#ifndef TAP_DEBUG
+#define TAP_DEBUG 0             // 1 = print KEY + DIGEST on serial. Bench only; never ship, never film.
+#endif
+#define PIN_PROVISION 0         // GPIO0 = the devkit's BOOT button; must be held to re-key
 // 2026-10-10 Aperture safety pass. Compile status: see firmware/COMPILE.md.
 // NOT RUN ON HARDWARE. Lodestone: please review before Jiggy flashes.
 //  * bootloader_random_enable() in setup: without RF, esp_random() is only pseudo-random.
@@ -157,10 +162,14 @@ static void ceremony(const uint8_t challenge[32]) {
 
   Serial.print(F("CHAL "));
   printHex(challenge, 32);
+#if TAP_DEBUG
+  // DEBUG BUILDS ONLY. Printing the key lets anything on the USB host (a compromised agent included)
+  // clone the stone, and puts the key in any screen recording. Never ship or film with TAP_DEBUG=1.
   Serial.print(F("KEY "));
   printHex(sessionKey, 32);
   Serial.print(F("DIGEST "));
   printHex(digest, 32);
+#endif
   Serial.println(F("CEREMONY start"));
 
   unsigned long t = millis();
@@ -251,7 +260,11 @@ static void handleCommand(String cmd) {
     Serial.println(looping ? "ON" : "OFF");
   } else if (cmd.startsWith("key ")) {
     uint8_t nk[32];
-    if (parseHex(cmd.substring(4), nk, 32) && key_is_weak(nk, 32)) {
+    // Re-keying needs a HUMAN AT THE STONE: hold the BOOT button (GPIO0) while sending `key`.
+    // Without it, the agent's host (or whoever plugs into a stolen stone) could silently swap the key.
+    if (digitalRead(PIN_PROVISION) != LOW) {
+      Serial.println(F("REFUSED: hold the BOOT button while sending key (physical presence required)"));
+    } else if (parseHex(cmd.substring(4), nk, 32) && key_is_weak(nk, 32)) {
       Serial.println(F("REFUSED: weak key (all bytes equal), key unchanged"));
     } else if (parseHex(cmd.substring(4), nk, 32)) {
       memcpy(sessionKey, nk, 32);
@@ -288,6 +301,7 @@ static void handleCommand(String cmd) {
 void setup() {
   pinMode(SOL_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(PIN_PROVISION, INPUT_PULLUP);   // BOOT button: LOW while held; gates `key`
   drive(false);              // solenoid OFF at boot, always
   bootloader_random_enable(); // true entropy for esp_random() with RF off; never disabled (no ADC/RF used)
   therm_init(&coil, (uint32_t)millis());

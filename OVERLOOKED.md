@@ -12,7 +12,13 @@ Severity is judged for the real product. Each item is labelled as demo-acceptabl
 `vault/vault.js:38` has `let fails = 0, lockedUntil = 0, hardLocked = false` in memory. **Restart the process and the hard lock resets**, so "10 tries ever" becomes "10 tries per restart", which collapses toward the flat-lockout row in ARCHITECTURE.md (today's stone falls in a day).
 - **FIXED in vault.js** (`lockStore` option, test "lockout SURVIVES A RESTART", 25/25). The app must pass a SecureStore-backed `lockStore`; without one, the lock is RAM-only by design and the test asserts that too.
 
-## 3. Anyone with USB can re-key the stone (medium)
+## 1b. STATUS (Jiggy's call, 2026-10-11): FIXED in source, NOT YET COMPILED
+`solenoid_blink.ino`: KEY and DIGEST prints are now behind `#if TAP_DEBUG` (default 0). The `key` command is refused unless the BOOT button (GPIO0) is held. **Not compiled: there is no arduino-cli on this box.** Lodestone or Jiggy must build and flash it and confirm (a) no KEY line at a ceremony, (b) `key …` without the button prints REFUSED.
+
+## 1c. The honest limit: a stolen stone can be reflashed or dumped
+Anyone with USB access to the stone can run `esptool read_flash` to copy the firmware, key included (the key is compiled in), or flash new firmware that skips every check above. Source-level fixes stop a *running* stone from leaking. They don't stop someone holding the stone. Real fix: **ESP32 Secure Boot v2 + flash encryption** (burns eFuses, irreversible, so do it on production units only), or keep the key in a **secure element** (ATECC608-class) that never exports it. After a stone is lost: re-pair the phone to a new stone. The old key must stop verifying (the phone keeps the pairing).
+
+## 3. Anyone with USB can re-key the stone (medium) — now gated on the BOOT button, see 1b
 `key <64hex>` over serial is unauthenticated. The agent's host can silently re-key the stone: denial of service, or setting a key the attacker knows once combined with item 1.
 - **Fix:** provisioning only while touch or a button is held, plus a magnetic "re-keyed" confirmation pattern the phone must see.
 
