@@ -6,14 +6,14 @@ Written 2026-10-10 evening CT by Aperture, from the wire (text only, since 22:00
 Legend: **V** = verified in code/tests/chain today · **J** = Aperture's judgement, not measured · ✅ = fixed tonight (this commit).
 Effort: S < 2 h · M = half a day · L = days+. Pre = before the Fair submission; Post = roadmap.
 
-Test total at this commit: **301**, all passing: vault 102 (24+22+9+8+10+27+2), stone 70 (21+27+9+13), sdk 11, expo 44 (38+6), art 74 (seal 18, receipt 9, vowfield 9, aperture 38).
-(The 271 quoted earlier became 275 when Cadence's single-use commit took cosign from 23 to 27 tests (that's 4 more) at `bbc2189`. This commit adds 26 expo tests.)
+Test total at this commit: **321**, all passing (re-run 2026-10-10 ~8:35 PM CT): vault 102 (24+22+9+8+10+27+2), stone 70 (21+27+9+13), sdk 11, expo 44 (38+6), art 77 (seal 18, receipt 9, vowfield 12, aperture 38), firmware host tests 17 (`firmware/test/run.sh`, gcc).
+(301 → 304 when vowfield went 9 → 12 at `3e68033`; 304 → 321 with the 17 firmware tests in this commit.)
 
 ## CRYPTO
 
 | # | Gap | Why it matters (attack) | Fix | Eff | Owner | When | Basis |
 |---|---|---|---|---|---|---|---|
-| C1 | **Stone holds no key in the on-chain 2-of-2.** On chain it's agent + phone. Stone + phone (`stone/squads-devnet.*`) never ran. | An attacker who owns the phone (malware, or the phone just unlocked in someone's hand) plus the agent can spend with no stone at all. The stone is a presence check *into* the phone, not a signer. | Pitch: keep "agent + phone" wording (already in SUBMISSION §2). Post: stone key as a Squads member (or FROST so the chain sees one key). | L | Cadence (vault) + Lodestone (firmware) | Post (pre = wording only) | V |
+| C1 | **Stone holds no key in the on-chain 2-of-2.** On chain it's agent + phone. Stone + phone (`stone/squads-devnet.*`) never ran. | An attacker who owns the phone (malware, or the phone just unlocked in someone's hand) plus the agent can spend with no stone at all. The stone is a presence check *into* the phone, not a signer. | Pitch: keep "agent + phone" wording (already in SUBMISSION §2). Post: stone key as a Squads member (or FROST so the chain sees one key). Design: **`STONE-KEY.md`** (touch-gated Ed25519 on ESP32-S3, ~29 ms/sign; vault refuses unless phone AND stone votes are required). | L | Cadence (vault) + Lodestone (firmware) | Post (pre = wording only) | V |
 | C2 | **Demo key is public** (`[1..32]` in `firmware/solenoid_blink.ino`). | Anyone who reads the repo can forge stone signatures and magnet codes for the demo stone. That's fine for a demo and fatal for real use. | Fresh key via the stone's `key` command, set in the app, **never committed** (Lodestone H3). On screen: "demo key". | S | **Jiggy** | Pre (before filming) | V |
 | C3 | **Magnet nonce and `kicks` bump are unbenched.** | Liveness is only proven in simulation (nonce 200/200 sim, bump legit 200/200, fakes 0/200). Without a bench run, "the phone felt the stone" is a claim we can't make. | Flash, then run with the phone flat on the stone and once with the case on. Log the raw numbers to `evidence/`. | S | **Jiggy** (Lodestone tunes the threshold) | Pre | V |
 | C4 | **Relay attack: no distance bounding.** | An accomplice holds a phone on the real stone and relays the magnet code or bump to the victim's phone. We prove the phone was live, not how far away it stood. | Honest-scope line (in PITCH). Post: UWB ranging / RTT bound. | L | Lodestone | Post | V (scope) |
@@ -27,6 +27,16 @@ Test total at this commit: **301**, all passing: vault 102 (24+22+9+8+10+27+2), 
 | C12 | **ML-DSA / post-quantum.** | Ed25519 everywhere. A fresh address per payment is privacy only. | Roadmap line only (in SUBMISSION §2). | L | Lodestone | Post | V (scope) |
 | C13 | **tapId must reach the agent** so it can build the `TAP1:<tapId>:…` memo. That channel isn't specced. | If the agent can't learn the tapId, honest receipts break. It's public, so leaking it is harmless, but forging it is refused by the memo check. | Spec it in the pairing/ceremony flow (U1): the phone returns `{tapId}` with the ceremony result. | S | Lodestone + Cadence | Pre | J |
 | C14 | **Agent = full Squads member** (can open/approve proposals alone, can't execute). | Proposal spam, rent griefing. | Documented (vault README). Post: proposer-only role. | M | Cadence | Post | V |
+
+
+### HARDWARE (added 2026-10-10 night)
+
+| # | Gap | Why it matters (attack) | Fix | Eff | Owner | When | Basis |
+|---|---|---|---|---|---|---|---|
+| H1 | **Stone RNG unseeded with RF off.** `solenoid_blink.ino` minted challenges and `kicks` nonces with `esp_random()` but never enabled an entropy source; ESP-IDF docs: pseudo-random only once the app runs with Wi-Fi/BT off. | Predictable challenges/nonces → precomputed magnet codes and bump schedules. | ✅ `bootloader_random_enable()` in setup (no ADC/RF used, so never disabled). Compiles; not run on hardware. | S | Aperture → **Lodestone review** | Pre ✅ | V (docs + code read) |
+| H2 | **Weak/all-zero session key accepted.** | A zeroed key = anyone can compute the HMAC magnet code. | ✅ `key_is_weak()` (all bytes equal) refused at boot, on `key`, and before every ceremony. 4 host tests. | S | Aperture → Lodestone review | Pre ✅ | V |
+| H3 | **No coil duty-cycle limit** (only a 2000 ms per-fire cap; `loop` + `fire` could cook the Adafruit 1512). | Coil/driver overheating at the Fair. | ✅ thermal leaky bucket in `stone_safety.h`: ≤25% sustained duty, ≤4000 ms stored heat; refused pulses leave the coil off and abort the ceremony/kicks. 13 host tests. Numbers are J — retune with a thermometer. | S | Aperture → Lodestone review | Pre ✅ | V (tests) / J (limits) |
+| H4 | **Board is ESP32-WROOM-32D (likely chip v1).** v1: voltage-glitch eFuse key readout (CVE-2019-17391) + secure-boot bypass (CVE-2019-15894); v3: EMFI bypass (CVE-2023-35818) + AES side channel (IACR 2023/090). | A stolen stone's key is extractable with lab gear. Matters once the stone holds a real key (C1). | Pre: Jiggy reads the chip rev from the boot log; scope line "remote attacker can't fake the stone; a thief with a glitch lab can". Post: ESP32-S3/C3 (ROM FI countermeasures per Espressif AR2023-005), flash encryption + Secure Boot V2 release mode, per-device keys. | S / L | **Jiggy** (rev) / Lodestone | Pre (wording) / Post | V (sources) |
 
 ## USABILITY
 

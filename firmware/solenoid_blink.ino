@@ -42,6 +42,15 @@
  */
 
 #include <mbedtls/md.h>
+#include "bootloader_random.h"  // SAR-ADC entropy for esp_random() with Wi-Fi/BT off (ESP-IDF RNG docs)
+#include "stone_safety.h"       // key_is_weak() + coil thermal bucket; host-tested in firmware/test/
+// 2026-10-10 Aperture safety pass. Compile status: see firmware/COMPILE.md.
+// NOT RUN ON HARDWARE. Lodestone: please review before Jiggy flashes.
+//  * bootloader_random_enable() in setup: without RF, esp_random() is only pseudo-random.
+//    We never use ADC/I2S/Wi-Fi/BT here; if you add any, call bootloader_random_disable() first.
+//  * weak keys (all bytes equal, e.g. all-zero) refused at boot, on `key`, and before ceremonies.
+//  * coil thermal bucket: <=25% sustained duty, <=4000 ms stored heat; pulses that would
+//    exceed it are REFUSED (coil stays off) and the ceremony/kicks abort.
 // Multipart HMAC API (starts/update/finish) ships in the ESP32 Arduino core's
 // mbedTLS (2.x and 3.x). If your core ever errors on these lines, swap to the
 // one-shot: mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
@@ -63,6 +72,19 @@ uint8_t sessionKey[32] = {
   0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,0x20
 };
 bool keySet = true;
+therm_t coil;
+bool coilHot = false;   // set when a pulse was refused; ceremony/kicks abort
+
+// Every coil-on goes through here. Returns false (coil stays OFF) if the
+// thermal bucket would overflow.
+static bool coilAllow(unsigned long ms) {
+  if (therm_request(&coil, (uint32_t)millis(), (uint32_t)ms)) return true;
+  coilHot = true;
+  Serial.print(F("REFUSED: coil thermal budget (heat_ms="));
+  Serial.print(coil.heat_ms);
+  Serial.println(F("), let it cool"));
+  return false;
+}
 
 static void hmac_sha256(const uint8_t *key, size_t keylen,
                         const uint8_t *msg, size_t msglen, uint8_t out[32]) {
@@ -96,6 +118,7 @@ static void drive(bool on) {
 // Energize with a hard cap so a stuck loop can't cook the coil.
 static void energize(unsigned long ms) {
   unsigned long capped = ms > MAX_ON_MS ? MAX_ON_MS : ms;
+  if (!coilAllow(capped)) return;
   drive(true);
   delay(capped);
   drive(false);
@@ -116,6 +139,7 @@ static void sendBit(int bit, unsigned long &t) {
   Serial.print(bit);
   Serial.print(F(" t="));
   Serial.println(t);
+  if (bit == 1 && !coilAllow(symbolMs)) { delay(symbolMs); t += symbolMs; return; }
   drive(bit == 1);
   delay(symbolMs);
   drive(false);
@@ -123,6 +147,8 @@ static void sendBit(int bit, unsigned long &t) {
 }
 
 static void ceremony(const uint8_t challenge[32]) {
+  if (key_is_weak(sessionKey, 32)) { Serial.println(F("REFUSED: weak session key, set one with key <64hex>")); return; }
+  coilHot = false;
   uint8_t msg[35];
   msg[0] = 'm'; msg[1] = 'a'; msg[2] = 'g';
   memcpy(msg + 3, challenge, 32);
@@ -139,11 +165,12 @@ static void ceremony(const uint8_t challenge[32]) {
 
   unsigned long t = millis();
   // preamble 10101010, MSB-first
-  for (int i = 7; i >= 0; i--) sendBit((0xAA >> i) & 1, t);
+  for (int i = 7; i >= 0; i--) { sendBit((0xAA >> i) & 1, t); if (coilHot) { drive(false); Serial.println(F("CEREMONY aborted")); return; } }
   // 16 bits from digest[0], digest[1], LSB-first
   for (int b = 0; b < 16; b++) {
     int bit = (digest[b / 8] >> (b % 8)) & 1;
     sendBit(bit, t);
+    if (coilHot) { drive(false); Serial.println(F("CEREMONY aborted")); return; }
   }
   Serial.println(F("CEREMONY end"));
 }
@@ -190,6 +217,7 @@ static void kicks(uint32_t nonce) {
   unsigned long prev = 0;
   for (int i = 0; i < 6; i++) {
     delay(sched[i] - prev);
+    if (!coilAllow(40)) { Serial.println(F("KICKS aborted")); return; }
     drive(true); delay(40); drive(false);
     prev = sched[i] + 40;
   }
@@ -222,7 +250,11 @@ static void handleCommand(String cmd) {
     Serial.print(F("looping "));
     Serial.println(looping ? "ON" : "OFF");
   } else if (cmd.startsWith("key ")) {
-    if (parseHex(cmd.substring(4), sessionKey, 32)) {
+    uint8_t nk[32];
+    if (parseHex(cmd.substring(4), nk, 32) && key_is_weak(nk, 32)) {
+      Serial.println(F("REFUSED: weak key (all bytes equal), key unchanged"));
+    } else if (parseHex(cmd.substring(4), nk, 32)) {
+      memcpy(sessionKey, nk, 32);
       keySet = true;
       Serial.println(F("session key set"));
     } else Serial.println(F("ERR: need 64 hex chars"));
@@ -257,9 +289,13 @@ void setup() {
   pinMode(SOL_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   drive(false);              // solenoid OFF at boot, always
+  bootloader_random_enable(); // true entropy for esp_random() with RF off; never disabled (no ADC/RF used)
+  therm_init(&coil, (uint32_t)millis());
   Serial.begin(115200);
   delay(500);
   Serial.println(F("\nTAP knot-stone solenoid blink v1"));
+  if (key_is_weak(sessionKey, 32)) Serial.println(F("WARN: boot key is weak; ceremonies refused until `key <64hex>`"));
+  else if (sessionKey[0] == 0x01 && sessionKey[31] == 0x20) Serial.println(F("NOTE: DEMO key 01..20 loaded; rotate with `key <64hex>` per Fair run"));
   Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | help"));
 }
 
