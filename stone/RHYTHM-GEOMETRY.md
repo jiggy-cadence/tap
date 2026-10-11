@@ -19,7 +19,7 @@ and **bits per second** is the figure of merit. Long lazy gaps waste time; gaps 
 ## Validated against the real matcher (`matchSchedule`, best blind attack, N=30,000), equal ritual length ≈ 2.3–2.4 s
 | τ | today: 6 kicks, 200–700 | 9 kicks, 150–420 | **10 kicks, 130–380** |
 |---|---|---|---|
-| 20 ms | 10.0 bits | 14.9 | **>14.9** (0 hits) |
+| 20 ms | 10.0 bits | 14.9 | **≈14** (0 hits here, 2 in Lodestone's rerun; N=30k can't resolve p<1e-4) |
 | 30 ms | 7.9 bits | 9.8 | **11.3** |
 | 40 ms | 6.3 bits | 7.9 | **8.7** |
 

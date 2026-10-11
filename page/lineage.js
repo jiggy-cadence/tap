@@ -112,6 +112,37 @@ function render(ctx, M, W) {
     ctx.strokeStyle = `rgba(154,140,109,${0.35 + 0.5 * v})`; ctx.lineWidth = Math.max(0.6, W / 1400); ctx.stroke();
   }
 }
+
+// ---------- RING FORM (SEAL register, round 2): each generation is a ring; its own drawing is written around it ----------
+const SC = { bg: "#030504", m: [0, 255, 166], g: [166, 255, 0], red: "#ff2a2a", ash: "125,138,128", bone: "#d8f5c8", dim: "#3c5a3a" };
+function renderRings(ctx, M, W) {
+  const cx = W / 2, cy = W / 2, n = M.strata.length, r0 = W * 0.09, r1 = W * 0.43, dr = (r1 - r0) / Math.max(1, n);
+  ctx.fillStyle = SC.bg; ctx.fillRect(0, 0, W, W);
+  // the genesis seed: a small hex of the genesis hash
+  for (let i = 0; i < 6; i++) { const a0 = i * Math.PI / 3, a1 = (i + 1) * Math.PI / 3, rr = r0 * 0.55;
+    ctx.beginPath(); ctx.moveTo(cx + rr * Math.cos(a0), cy + rr * Math.sin(a0)); ctx.lineTo(cx + rr * Math.cos(a1), cy + rr * Math.sin(a1)); ctx.strokeStyle = SC.dim; ctx.lineWidth = Math.max(1, W / 900); ctx.stroke(); }
+  M.strata.forEach((s, i) => {
+    const segs = trace(s.p).segs; if (!segs.length) return;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const [a, b, c, d] of segs) { x0 = Math.min(x0, a, c); x1 = Math.max(x1, a, c); y0 = Math.min(y0, b, d); y1 = Math.max(y1, b, d); }
+    const wx = Math.max(1e-6, x1 - x0), wy = Math.max(1e-6, y1 - y0), base = r0 + dr * (i + 0.5);
+    const polar = (x, y) => { const th = ((x - x0) / wx) * 2 * Math.PI - Math.PI / 2, r = base + ((y - y0) / wy - 0.5) * dr * 0.86; return [cx + r * Math.cos(th), cy + r * Math.sin(th)]; };
+    const t = n > 1 ? i / (n - 1) : 1, c = SC.m.map((v, k) => Math.round(v + (SC.g[k] - v) * t)).join(",");
+    const newest = i === n - 1, una = s.outcome === "unanswered";
+    ctx.beginPath(); for (const [a, b, c2, d] of segs) { const [px, py] = polar(a, b), [qx, qy] = polar(c2, d); ctx.moveTo(px, py); ctx.lineTo(qx, qy); }
+    ctx.strokeStyle = una ? "rgba(" + SC.ash + ",0.25)" : "rgba(" + c + "," + (newest ? 0.95 : 0.35 + 0.4 * t) + ")"; ctx.lineWidth = newest ? Math.max(1.1, W / 600) : Math.max(0.6, W / 1300); ctx.stroke();
+  });
+  // refusals: a thin red tear across the boundary between the generations they interrupted
+  for (const sc of M.scars) { const r = r0 + dr * sc.at, ang = (parseInt(sc.h.slice(0, 4), 16) / 65536) * 2 * Math.PI, span = 0.35;
+    ctx.beginPath(); for (let k = 0; k <= 24; k++) { const a = ang - span / 2 + span * k / 24, rr = r + Math.sin(k * 1.7) * dr * 0.12; const X = cx + rr * Math.cos(a), Y = cy + rr * Math.sin(a); k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+    ctx.strokeStyle = SC.red; ctx.lineWidth = Math.max(1.4, W / 500); ctx.stroke(); }
+  // hex rim from the last sig (the event)
+  for (let i = 0; i < 96; i++) { const v = parseInt(M.rim.slice((i % 32) * 2, (i % 32) * 2 + 2), 16) / 255, a = 2 * Math.PI * i / 96, ra = W * 0.455, rb = ra + W * 0.022 * v;
+    ctx.beginPath(); ctx.moveTo(cx + ra * Math.cos(a), cy + ra * Math.sin(a)); ctx.lineTo(cx + rb * Math.cos(a), cy + rb * Math.sin(a)); ctx.strokeStyle = "rgba(166,255,0," + (0.2 + 0.6 * v) + ")"; ctx.lineWidth = Math.max(0.7, W / 1200); ctx.stroke(); }
+  // CRT caption strip
+  if (ctx.fillText) { ctx.fillStyle = SC.bone; ctx.font = Math.round(W / 70) + "px ui-monospace, monospace";
+    ctx.fillText("LINEAGE · " + M.strata.length + " gen · " + M.coined.length + " words the art coined itself · " + M.scars.length + " refusal", W * 0.03, W * 0.975); }
+}
 function still(canvas, taps) { const M = model(taps); render(canvas.getContext('2d'), M, canvas.width); return M; }
 function verifyLines(M) {
   return [`lineage: ${M.strata.length} strata, ${M.scars.length} refusal scar(s), ${M.words} words (${M.coined.length} coined by the art itself)`,
@@ -125,6 +156,6 @@ const DEVNET = [
   { label: '2h859F · agent alone, refused on-chain', outcome: 'refused', receipt: '', sig: '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD' },
   { label: '1G8AKyZQ · injected agent refused 4x, honest 5 landed, single-use tap', outcome: 'approved', receipt: 'TAP1:tap-4f3185eb85c131d8:bb85583f91963c1960987c85693271a5059236fe9ce79e269bb08f03a529d959', sig: '1G8AKyZQ8DeP9R49KoKZa2bKEupfY6NinrFUUSVGsFBiLvGN6iZ6gs5renyNnnPNkE2sM3KQmerr31y7HWFrrwz' },
 ];
-const LINEAGE = { model, render, still, verifyLines, genesis, child, trace, readBack, DEVNET, version: 'lineage-v1' };
+const LINEAGE = { model, render, renderRings, still, verifyLines, genesis, child, trace, readBack, DEVNET, version: 'lineage-v1' };
 if (typeof module !== 'undefined' && module.exports) module.exports = LINEAGE; else root.LINEAGE = LINEAGE;
 })(typeof window !== 'undefined' ? window : globalThis);
