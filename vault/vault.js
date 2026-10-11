@@ -26,7 +26,7 @@ const { canon } = require('./canon');
 const H = (...parts) => crypto.createHash('sha256').update(parts.join('|')).digest('hex');
 const WALLET_KINDS = new Set(['sol_transfer', 'spl_multisig_transfer', 'squads_vault_transfer']);   // kinds with a recipient
 
-function createVault({ secrets, policy, executors, verifyCeremony, now = () => Date.now() }) {
+function createVault({ secrets, policy, executors, verifyCeremony, now = () => Date.now(), lockStore }) {
   // ---- private state: nothing below is reachable from the returned object ----
   const S = Object.freeze({ ...secrets });          // e.g. { openrouterKey, solanaSecretKey, phoneSecretKey }
   const P = JSON.parse(JSON.stringify(policy));     // deep copy: caller can't mutate after
@@ -35,7 +35,10 @@ function createVault({ secrets, policy, executors, verifyCeremony, now = () => D
   const used = new Set();                           // consumed intentIds (single use)
   const known = {};                                 // kind -> Set of trusted recipients
   for (const k of WALLET_KINDS) known[k] = new Set(P[k]?.knownRecipients || []);
-  let fails = 0, lockedUntil = 0, hardLocked = false;
+  // Lockout state must SURVIVE RESTARTS, or "10 tries ever" becomes "10 tries per restart" (OVERLOOKED.md #2).
+  // lockStore: { load() -> {fails,lockedUntil,hardLocked}|null, save(state) } (SecureStore in the app, a file on node).
+  let { fails = 0, lockedUntil = 0, hardLocked = false } = (lockStore && lockStore.load()) || {};
+  const saveLock = () => { if (lockStore) lockStore.save({ fails, lockedUntil, hardLocked }); };
 
   const DAY = 24 * 3600 * 1000;
   const MAX_PENDING = P.maxPending || 64;
@@ -133,6 +136,7 @@ function createVault({ secrets, policy, executors, verifyCeremony, now = () => D
       // ESCALATING lockout: a flat "3 fails → 60 s" allows ~3,600 guesses/day (see MATH.md)
       if (fails >= (P.hardLockAfter || 10)) hardLocked = true;
       else if (fails >= 3) lockedUntil = now() + 60000 * 2 ** (fails - 3);
+      saveLock();
       return { status: 'refused', reason: 'ceremony did not verify' };
     }
     // no reset on success: a reset would hand out fresh guesses after every legit tap (MATH.md budget is TOTAL)

@@ -10,7 +10,7 @@ Severity is judged for the real product. Each item is labelled as demo-acceptabl
 
 ## 2. The vault's hard lock lives in RAM (high)
 `vault/vault.js:38` has `let fails = 0, lockedUntil = 0, hardLocked = false` in memory. **Restart the process and the hard lock resets**, so "10 tries ever" becomes "10 tries per restart", which collapses toward the flat-lockout row in ARCHITECTURE.md (today's stone falls in a day).
-- **Fix:** persist `fails`, `lockedUntil` and `hardLocked` (app: SecureStore; node: an fs file with fsync) and load them *before* the first approve. Only an explicit re-pair resets them, and never a restart.
+- **FIXED in vault.js** (`lockStore` option, test "lockout SURVIVES A RESTART", 25/25). The app must pass a SecureStore-backed `lockStore`; without one, the lock is RAM-only by design and the test asserts that too.
 
 ## 3. Anyone with USB can re-key the stone (medium)
 `key <64hex>` over serial is unauthenticated. The agent's host can silently re-key the stone: denial of service, or setting a key the attacker knows once combined with item 1.

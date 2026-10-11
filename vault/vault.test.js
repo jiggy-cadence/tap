@@ -17,7 +17,7 @@ const executors = {
   sol_transfer: async (i, S) => { calls.push(['sol', i.to, i.lamports, !!S.solanaSecretKey]); return { result: 'sig123' }; },
 };
 const SECRET_OR = 'sk-or-v1-SECRET-DO-NOT-LEAK', SECRET_SOL = 'SOLKEY-SECRET-DO-NOT-LEAK';
-const mk = () => createVault({
+const mk = (lockStore) => createVault({ lockStore,
   secrets: { openrouterKey: SECRET_OR, solanaSecretKey: SECRET_SOL },
   policy: {
     openrouter: { allowance: 0.05, prices: { 'cheap/model': { prompt: 1e-7, completion: 4e-7 }, 'big/model': { prompt: 1.5e-5, completion: 7.5e-5 } } },
@@ -171,6 +171,16 @@ let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('PASS', 
     assert.equal(seen.pol.multisig, 'MS'); assert.deepEqual(seen.phone, [1, 2, 3]);
     assert.equal(w.status().spent24h.spl_multisig_transfer, 5_000_000);
     assert.equal((await w.request({ kind: 'spl_multisig_transfer', to: 'Alice111', amount: 1_000_001 })).status, 'needs_ceremony'); // over allowance
+  });
+  await t('lockout SURVIVES A RESTART (persisted lockStore), and no store = documented reset', async () => {
+    let saved = null; const store = { load: () => saved && JSON.parse(saved), save: st => { saved = JSON.stringify(st); } };
+    let a = mk(store);
+    for (let i = 1; i <= 10; i++) { clock += 60000 * 2 ** Math.max(0, i - 3) + 1; const r = await a.request({ kind: 'sol_transfer', to: 'R' + i, lamports: 1 }); await a.approve(r.intentId, { bits: stoneBits(r.challenge) ^ 0b111 }); }
+    assert.equal(a.status().locked, true);
+    const b = mk(store);                                            // "restart": fresh process, same persisted store
+    assert.equal(b.status().locked, true, 'hard lock must survive a restart');
+    assert.equal((await b.request({ kind: 'sol_transfer', to: 'Alice111', lamports: 1 })).status, 'locked');
+    assert.equal(mk().status().locked, false);                      // without a store the lock is RAM-only (why apps must pass one)
   });
   console.log(`${n}/${n} pass`);
 })().catch(e => { console.error('FAIL', e); process.exit(1); });
