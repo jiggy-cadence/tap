@@ -19,12 +19,14 @@
  * PROTOCOL (per knot-stone-v2-keyed-mag-spec.md):
  *   preamble 10101010 (sync), then 16 bits LSB-first from
  *   HMAC-SHA256(K, "mag" || C) — symbol period 250ms default, 24 symbols ~6s.
- *   Phone verifies preamble correlation + Hamming distance <= 2 from expected.
+ *   Phone verifies preamble correlation + Hamming distance <= 1 from expected.
+ *   (PINNED 2026-10-11 with Lodestone: header previously said <=2; vault + MATH.md use t=1
+ *   → film 1 in 386 with hard lock at 10. Never speak 1 in 48 on camera.)
  *
  * Serial console @ 115200:
  *   blink        one keyed ceremony (fresh random challenge, current key)
  *   loop         toggle looping ceremonies (default OFF at boot — type it)
- *   key <64hex>  set 32-byte session key
+ *   key <64hex>  set 32-byte session key (REFUSED unless BOOT/GPIO0 held)
  *   chal <64hex> set 32-byte challenge, run one ceremony
  *   fire <ms>    raw solenoid on for <ms> (max 2000) — for the meter check
  *   rate <ms>    symbol period 50..1000 (default 250)
@@ -34,6 +36,10 @@
  *                prints it — type the same nonce into the app's bump bench tool.
  *                UNBENCHED on hardware (sim parameters only).
  *   help         this list
+ *
+ * KEY, DIGEST and per-bit SYM answer prints are NEVER emitted (any build).
+ * Filming: serial monitor off camera; never flash a real key with this build.
+ * Re-key: hold the BOOT button (GPIO0) while sending `key <64hex>`.
  *
  * Friday-night meter check BEFORE trusting the blink:
  *   Klein MM325 on the 10A range, in series with the solenoid 9V line,
@@ -46,8 +52,10 @@
 #include "stone_safety.h"       // key_is_weak() + coil thermal bucket; host-tested in firmware/test/
 
 #define PIN_PROVISION 0         // GPIO0 = the devkit's BOOT button; must be held to re-key
-// 2026-10-10 Aperture safety pass. Compile status: see firmware/COMPILE.md.
-// NOT RUN ON HARDWARE. Lodestone: please review before Jiggy flashes.
+// 2026-10-10 Aperture safety pass + 2026-10-11 Lodestone serial hardening.
+// Compile status: see firmware/COMPILE.md. NOT RUN ON HARDWARE.
+// Lodestone 01:46Z: stone_safety (1)(2)(3) no strike. KEY/DIGEST never printed;
+// BOOT-button gates `key`. Hamming t pinned to 1 (matches vault).
 //  * bootloader_random_enable() in setup: without RF, esp_random() is only pseudo-random.
 //    We never use ADC/I2S/Wi-Fi/BT here; if you add any, call bootloader_random_disable() first.
 //  * weak keys (all bytes equal, e.g. all-zero) refused at boot, on `key`, and before ceremonies.
@@ -247,18 +255,22 @@ static void handleCommand(String cmd) {
     Serial.print(F("looping "));
     Serial.println(looping ? "ON" : "OFF");
   } else if (cmd.startsWith("key ")) {
-    uint8_t nk[32];
     // Re-keying needs a HUMAN AT THE STONE: hold the BOOT button (GPIO0) while sending `key`.
     // Without it, the agent's host (or whoever plugs into a stolen stone) could silently swap the key.
     if (digitalRead(PIN_PROVISION) != LOW) {
       Serial.println(F("REFUSED: hold the BOOT button while sending key (physical presence required)"));
-    } else if (parseHex(cmd.substring(4), nk, 32) && key_is_weak(nk, 32)) {
-      Serial.println(F("REFUSED: weak key (all bytes equal), key unchanged"));
-    } else if (parseHex(cmd.substring(4), nk, 32)) {
-      memcpy(sessionKey, nk, 32);
-      keySet = true;
-      Serial.println(F("session key set"));
-    } else Serial.println(F("ERR: need 64 hex chars"));
+    } else {
+      uint8_t nk[32];
+      if (!parseHex(cmd.substring(4), nk, 32)) {
+        Serial.println(F("ERR: need 64 hex chars"));
+      } else if (key_is_weak(nk, 32)) {
+        Serial.println(F("REFUSED: weak key (all bytes equal), key unchanged"));
+      } else {
+        memcpy(sessionKey, nk, 32);
+        keySet = true;
+        Serial.println(F("session key set"));
+      }
+    }
   } else if (cmd.startsWith("chal ")) {
     uint8_t c[32];
     if (parseHex(cmd.substring(5), c, 32)) ceremony(c);

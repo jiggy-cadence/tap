@@ -30,6 +30,12 @@ t('lockout: unlocks after oldest failure ages past 60 s', () => { const L = new 
   [0, 1000, 2000].forEach(d => L.attempt(false, t0 + d)); assert.ok(L.locked(t0 + 59999)); assert.ok(!L.locked(t0 + 60000)); assert.ok(L.attempt(true, t0 + 60000).ok); });
 t('lockout: brute force caps at 3 tries/min (attacker loop)', () => { const L = new N.Lockout(); let tries = 0;
   for (let ms = 0; ms < 10 * 60000; ms += 100) { if (!L.locked(ms)) { L.attempt(false, ms); tries++; } } assert.ok(tries <= 30, 'tries ' + tries); });
-t('brute-force odds documented: 2^-16 per try, 3/min', () => {
-  const pMin = N.bruteForceOdds({}); assert.ok(Math.abs(pMin - 3 / 65536) < 1e-8); console.log('   per minute', pMin.toExponential(2), '| per hour', N.bruteForceOdds({ minutes: 60 }).toFixed(4), '| per day', N.bruteForceOdds({ minutes: 1440 }).toFixed(4)); });
+t('brute-force odds: exact (tol 0) and tolerance-1 ball', () => {
+  const exact = N.bruteForceOdds({}); assert.ok(Math.abs(exact - 3 / 65536) < 1e-8);
+  const tol1 = N.bruteForceOdds({ tolerance: 1 });
+  const pTry = 17 / 65536; const expect = 1 - (1 - pTry) ** 3;
+  assert.ok(Math.abs(tol1 - expect) < 1e-12);
+  assert.ok(Math.abs(tol1 - 7.8e-4) < 5e-5, '≈7.8e-4/min'); // Lodestone C10
+  assert.strictEqual(N.hamBall(16, 1), 17);
+  console.log('   exact/min', exact.toExponential(2), '| tol1/min', tol1.toExponential(2)); });
 console.log(`\n${pass}/${pass + fail} pass`); process.exit(fail ? 1 : 0);

@@ -9,6 +9,7 @@
 | `cosign-adapter.js` | Calls `vault/cosign.js` on exact `msgBytes` vs the stored intent; returns **named** reason codes. |
 | `fee-guard.js` | Refuses a ComputeBudget priority fee over the cap (default 100000 lamports), duplicate or unknown compute-budget ixs. |
 | `reasons.js` | Plain-English title + detail for **every** named reason code in stone/, sdk/, expo/ (`explain(code)`). `reasons.test.js` (6) fails on any code without one. |
+| `lock-store.js` | SecureStore-backed `lockStore` for `vault/vault.js` (OVERLOOKED #2). `hydrate()` then pass into `createVault`. Hard lock survives app restart. |
 | `cosign-adapter.test.js` | Node contract tests (38). Run: `NODE_PATH=../vault/node_modules node cosign-adapter.test.js` |
 
 ## Contract (do not invert)
@@ -45,3 +46,18 @@ else attachSignature(r.signature);
 ```
 
 Aperture does not own the Expo app. This folder only offers the store + adapter + Node proof.
+
+## Lockout persistence (Cadence 01:39Z / Lodestone 01:46Z)
+
+```js
+import * as SecureStore from 'expo-secure-store';
+const { makeLockStore } = require('./lock-store');
+const { createVault } = require('../vault/vault');
+
+const lockStore = makeLockStore(SecureStore);
+await lockStore.hydrate();          // fail closed if corrupt
+const vault = createVault({ ..., lockStore });
+// after approve path mutates lock state, optionally: await lockStore.flush();
+```
+
+Without a `lockStore`, the vault hard lock is RAM-only ("10 tries per restart"). Factory-wipe of the SecureStore key resets the lock — product call for Jiggy.

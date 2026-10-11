@@ -55,6 +55,10 @@ const R = {
   NO_USED_STORE:                 ['App not set up', 'The app cannot record used taps, so it will not sign.'],
   CORRUPT_USED_STORE:            ['Used-tap list damaged', 'The app cannot tell which taps were already used, so it refuses everything until re-paired.'],
   REFUSED_PERSIST_FAILED:        ['Could not save', 'The app could not record this tap as used, so it did not sign.'],
+  NO_LOCK_STORE:                 ['App not set up', 'The app has no secure place to remember failed taps, so it will not start the lockout counter.'],
+  CORRUPT_LOCK_STORE:            ['Lockout data damaged', 'The saved lockout state could not be read. Re-pair the phone before approving again.'],
+  LOCK_STORE_NOT_HYDRATED:       ['App still loading', 'The lockout memory has not loaded yet. Wait a moment and try again.'],
+  LOCK_STORE_PERSIST_FAILED:     ['Could not save lockout', 'The app could not save the failed-tap counter. Try again; if it repeats, re-pair.'],
   NO_PHONE_KEY:                  ['Phone key missing', 'This phone has no signing key. Pair it with the vault again.'],
   NO_CSPRNG:                     ['Phone cannot make secure randomness', 'The app cannot start a ceremony on this device.'],
 };

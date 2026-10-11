@@ -10,8 +10,9 @@
 // MODES: 'full' = original 48-bit frame (7.68 s). 'fair' = Fair-weekend frame: 4-bit SYNC 0xB +
 // 16-bit nonce + CRC-4/ITU (poly 0x3) = 24 bits * 160 ms = 3.84 s. Fair mode MUST be paired with
 // the Lockout below (3 failed decodes / 60 s). Brute-force odds: guessing a 16-bit nonce succeeds
-// with p = 2^-16 per try; with 3 tries per 60 s an attacker gets <= 3*2^-16 ≈ 4.6e-5 per minute,
-// ≈ 0.27% per hour, ~50% only after ~15,000 min (~10.5 days) of continuous attempts. A wrong decode
+// Exact guess (tolerance 0): p = 2^-16/try → ≈4.6e-5/min at 3 tries/60s.
+// Tolerance-1 (vault/keyed-mag): V=17 → ≈7.8e-4/min (Lodestone C10 fix). Pass tolerance:1.
+// A wrong decode
 // (weaker 4-bit CRC) fails closed: the phone signs the wrong nonce, the verifier rejects, it counts
 // as a failure. Set TAP_NONCE_MODE=full (or pass mode:'full') for the 32-bit frame.
 const MODES = {
@@ -78,5 +79,14 @@ class Lockout {
     this.fails.push(now); return { ok: false, locked: this.locked(now), code: 'BAD_TAP', reason: 'bad tap' };
   }
 }
-const bruteForceOdds = ({ nonceBits = 16, triesPerMin = 3, minutes = 1 } = {}) => 1 - (1 - 2 ** -nonceBits) ** (triesPerMin * minutes);
-module.exports = { SYNC, HALF_MS, MODES, DEFAULT_MODE, crc8, crcBits, frameBits, frameLen, frameMs, manchester, simulateSamples, decode, Lockout, bruteForceOdds };
+// Hamming ball V(n,t) = Σ_{k=0..t} C(n,k). tolerance=0 → exact guess (legacy); keyed-mag / vault use t=1.
+function hamBall(n, t) {
+  let v = 0, c = 1;
+  for (let k = 0; k <= t; k++) { if (k > 0) c = c * (n - k + 1) / k; v += c; }
+  return v;
+}
+const bruteForceOdds = ({ nonceBits = 16, triesPerMin = 3, minutes = 1, tolerance = 0 } = {}) => {
+  const p = hamBall(nonceBits, tolerance) / 2 ** nonceBits;
+  return 1 - (1 - p) ** (triesPerMin * minutes);
+};
+module.exports = { SYNC, HALF_MS, MODES, DEFAULT_MODE, crc8, crcBits, frameBits, frameLen, frameMs, manchester, simulateSamples, decode, Lockout, bruteForceOdds, hamBall };
