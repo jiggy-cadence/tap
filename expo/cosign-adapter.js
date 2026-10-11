@@ -3,7 +3,8 @@
 //
 // Lodestone owns the Expo wiring. This adapter:
 //   1. Loads storedIntent from useStoredIntent (ceremony only).
-//   2. Calls vault cosign(msgBytes, storedIntent, phoneKeypair) on the EXACT bytes
+//   2. Checks the priority fee bound (fee-guard.js), then calls vault makeCosigner (single use,
+//      spent set persisted in usedStorage) → cosign(msgBytes, storedIntent, phoneKeypair) on the EXACT bytes
 //      the agent will broadcast (no re-serialize after cosign — Cadence 21:09Z).
 //   3. Returns named reason codes so Expo UI / tests can assert the RIGHT refusal.
 //
@@ -11,7 +12,18 @@
 // passes agentIntent, it is refused as REFUSED_AGENT_INTENT before cosign runs.
 'use strict';
 
-const { cosign: vaultCosign } = require('../vault/cosign');
+const { makeCosigner } = require('../vault/cosign');
+const { checkPriorityFee, DEFAULT_MAX_PRIORITY_LAMPORTS } = require('./fee-guard');
+
+// Spent taps survive app restarts: an in-memory used-set resets on restart = replay after restart (Cadence 01:05Z).
+const USED_KEY = 'tap.usedTaps.v1';
+async function loadUsed(storage) {
+  const raw = await storage.getItem(USED_KEY);
+  if (!raw) return new Set();
+  const arr = JSON.parse(raw);               // throws on corruption → caller fails closed
+  if (!Array.isArray(arr)) throw new Error('used-set is not an array');
+  return new Set(arr);
+}
 
 /** Map vault/cosign.js free-text `refused` strings to stable codes. */
 function namedReason(refused) {
@@ -33,6 +45,8 @@ function namedReason(refused) {
   if (/mint mismatch/i.test(s)) return 'REFUSED_MINT_MISMATCH';
   if (/destination mismatch/i.test(s)) return 'REFUSED_DESTINATION_MISMATCH';
   if (/multisig mismatch/i.test(s)) return 'REFUSED_MULTISIG_MISMATCH';
+  if (/already used/i.test(s)) return 'REFUSED_REPLAY';
+  if (/no tapId/i.test(s)) return 'REFUSED_NO_TAP_ID';
   return 'REFUSED_OTHER';
 }
 
@@ -41,10 +55,13 @@ function namedReason(refused) {
  * @param {Uint8Array|Buffer} opts.msgBytes — exact bytes that will be broadcast
  * @param {object} opts.phoneKeypair — solana Keypair (or { publicKey, secretKey })
  * @param {object} opts.store — return value of makeStoredIntent(...)
+ * @param {object} opts.usedStorage — persistent backend (AsyncStorage) for the spent-tap set
+ * @param {number} [opts.maxPriorityLamports] — cap on the ComputeBudget priority fee (default 100000)
  * @param {object} [opts.agentIntent] — if present, ALWAYS refused (named)
  */
 async function cosignWithStoredIntent(opts) {
-  const { msgBytes, phoneKeypair, store, agentIntent } = opts || {};
+  const { msgBytes, phoneKeypair, store, agentIntent, usedStorage } = opts || {};
+  const maxPriorityLamports = opts && opts.maxPriorityLamports !== undefined ? opts.maxPriorityLamports : DEFAULT_MAX_PRIORITY_LAMPORTS;
   if (agentIntent !== undefined) {
     return {
       ok: false,
@@ -62,12 +79,27 @@ async function cosignWithStoredIntent(opts) {
     return { ok: false, code: 'NO_PHONE_KEY', reason: 'phoneKeypair.secretKey required' };
   }
 
+  if (!usedStorage || typeof usedStorage.getItem !== 'function' || typeof usedStorage.setItem !== 'function') {
+    return { ok: false, code: 'NO_USED_STORE', reason: 'cosign adapter needs persistent storage for spent taps (AsyncStorage)' };
+  }
+
   const got = await store.getStoredIntent();
   if (!got.ok) {
     return { ok: false, code: got.code || 'NO_STORED_INTENT', reason: got.reason };
   }
 
-  const r = vaultCosign(msgBytes, got.intent, phoneKeypair);
+  const fee = checkPriorityFee(msgBytes, maxPriorityLamports);
+  if (!fee.ok) return { ok: false, code: fee.code, reason: fee.reason, storedIntent: got.intent };
+
+  let used;
+  try { used = await loadUsed(usedStorage); }
+  catch (e) { return { ok: false, code: 'CORRUPT_USED_STORE', reason: 'spent-tap list unreadable; refusing rather than risk a replay' }; }
+  const r = makeCosigner(used)(msgBytes, got.intent, phoneKeypair);
+  if (r.ok) {
+    // Persist the spend BEFORE releasing the signature. If the write fails, the signature never leaves.
+    try { await usedStorage.setItem(USED_KEY, JSON.stringify([...used])); }
+    catch (e) { return { ok: false, code: 'REFUSED_PERSIST_FAILED', reason: 'could not record this tap as spent; not signing', storedIntent: got.intent }; }
+  }
   if (!r.ok) {
     return {
       ok: false,
@@ -85,4 +117,4 @@ async function cosignWithStoredIntent(opts) {
   };
 }
 
-module.exports = { cosignWithStoredIntent, namedReason };
+module.exports = { cosignWithStoredIntent, namedReason, USED_KEY };

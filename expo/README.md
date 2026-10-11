@@ -7,7 +7,9 @@
 | `useBumpCapture.js` | Accelerometer capture for the bump presence link (sim params). |
 | `useStoredIntent.js` | Save the approved intent **at ceremony time**. Never accepts agent JSON. |
 | `cosign-adapter.js` | Calls `vault/cosign.js` on exact `msgBytes` vs the stored intent; returns **named** reason codes. |
-| `cosign-adapter.test.js` | Node contract tests (18). Run: `NODE_PATH=../vault/node_modules node cosign-adapter.test.js` |
+| `fee-guard.js` | Refuses a ComputeBudget priority fee over the cap (default 100000 lamports), duplicate or unknown compute-budget ixs. |
+| `reasons.js` | Plain-English title + detail for **every** named reason code in stone/, sdk/, expo/ (`explain(code)`). `reasons.test.js` (6) fails on any code without one. |
+| `cosign-adapter.test.js` | Node contract tests (38). Run: `NODE_PATH=../vault/node_modules node cosign-adapter.test.js` |
 
 ## Contract (do not invert)
 
@@ -30,12 +32,15 @@ const { cosignWithStoredIntent } = require('./cosign-adapter');
 const store = makeStoredIntent(AsyncStorage);
 
 // After a successful ceremony (magnet / bump / tap UI you already own):
-await store.saveAtCeremony(decodedIntent, { ceremonyId });
+await store.saveAtCeremony(decodedIntent, { ceremonyId });   // mints a 128-bit tapId (CSPRNG) on the phone
+// The agent needs the tapId to write the memo TAP1:<tapId>:<sha256>; the tapId is public, not a secret.
 
 // When the agent presents msgBytes to co-sign:
-const r = await cosignWithStoredIntent({ msgBytes, phoneKeypair, store });
+// SINGLE USE: spent taps persist in AsyncStorage (key tap.usedTaps.v1). No usedStorage → NO_USED_STORE.
+const r = await cosignWithStoredIntent({ msgBytes, phoneKeypair, store, usedStorage: AsyncStorage });
 // never: cosignWithStoredIntent({ ..., agentIntent: agentJson })
-if (!r.ok) showRefusal(r.code, r.reason);
+const { explain } = require('./reasons');
+if (!r.ok) showRefusal(explain(r.code, r.reason));   // { title, detail } in plain English
 else attachSignature(r.signature);
 ```
 

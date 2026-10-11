@@ -60,6 +60,18 @@ function makeStoredIntent(storage) {
       decimals: Number(intent.decimals),
     };
     if (intent.requireMemo) stored.requireMemo = true;
+    // SINGLE USE (Cadence @bbc2189): every ceremony mints its own tapId, so the phone can spend
+    // each tap exactly once and two real taps for the same payment still differ. Minted HERE,
+    // on the phone, from a CSPRNG; never taken from the agent. meta.tapId is for tests only.
+    let tapId = meta.tapId;
+    if (tapId !== undefined) {
+      if (typeof tapId !== 'string' || !/^[0-9a-f]{16,64}$/.test(tapId)) return { ok: false, code: 'BAD_INTENT', reason: 'tapId must be 16-64 lowercase hex chars' };
+    } else {
+      const c = globalThis.crypto;
+      if (!c || typeof c.getRandomValues !== 'function') return { ok: false, code: 'NO_CSPRNG', reason: 'crypto.getRandomValues unavailable: cannot mint a tapId' };
+      tapId = Buffer.from(c.getRandomValues(new Uint8Array(16))).toString('hex');
+    }
+    stored.tapId = tapId;
     const envelope = {
       intent: stored,
       savedAt: Date.now(),
@@ -81,6 +93,9 @@ function makeStoredIntent(storage) {
     }
     const shape = assertIntentShape(envelope.intent);
     if (!shape.ok) return shape;
+    if (typeof envelope.intent.tapId !== 'string' || envelope.intent.tapId.length < 16) {
+      return { ok: false, code: 'REFUSED_NO_TAP_ID', reason: 'stored intent has no tapId (saved by an old build?): redo the ceremony' };
+    }
     return { ok: true, intent: envelope.intent, savedAt: envelope.savedAt, ceremonyId: envelope.ceremonyId };
   }
 
