@@ -69,9 +69,12 @@ const PALETTES = {
   seal:     { name: 'teal + magenta',        a: [298, .95], b: [170, .95] },
   vowfield: { name: 'copper + ice blue',     a: [204, .85], b: [190, .70], keepWarm: true },
   merkle:   { name: 'violet + gold',         a: [50, .85],  b: [268, .80] },
-  residue:  { name: 'cyan + rose',           a: [338, .8], b: [192, .95] },
   kickring: { name: 'orange + electric blue', a: [24, 1],   b: [214, 1] },
-  iris:     { name: 'amber + deep indigo',   a: [38, .9],   b: [250, .75], warmLowToB: true } };
+  // round 4: painted directly (no tint), a = lead hue, b = second hue
+  edwards:   { name: 'hot rose + violet',     a: [340, .9],  b: [262, .8], direct: true },
+  grayscott: { name: 'aqua + orchid',         a: [172, .85], b: [318, .7], direct: true },
+  lorenz:    { name: 'jade + ultraviolet',    a: [148, .8],  b: [286, .85], direct: true },
+  hilbert:   { name: 'cobalt + cyan',         a: [228, .95], b: [186, .9], direct: true } };
 const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x;
 function rgb2hsl(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; if (mx === mn) return [0, 0, l];
   const d = mx - mn, s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); let h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [h * 60, s, l]; }

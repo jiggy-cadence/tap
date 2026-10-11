@@ -4,27 +4,30 @@
  *   REVEAL .. LOOP : the finished piece stays; the live layer keeps running (particles, playhead, orbit comet, pulses).
  *   SEAL    the 64 SHA-256 rounds of H compute one per tick; the current round's 256 state bits flash, flipped bits white; a spark hops k·G.
  *   MERKLE  hashes bubble leaf -> root level by level (each level lights when its children are hashed); then the proof path climbs.
- *   RESIDUE chords i -> k·i mod N draw in order; a comet runs the orbit of 1 under ×k forever; the QR ring pulses residue by residue.
  *   KICK    a playhead sweeps the bar in real milliseconds; each kick fires as it is crossed; the Euclidean necklace rotations spin.
  *   VOWFIELD particles ride the RK4 field lines into their basins; a dot traces the B-H loop, flashing on each kick.
- *   IRIS    the blades open (approved) / snap shut (refused) / half-open and stall (unanswered), breathing on the tap's digest.
+ *   round 4 (not rings, painted directly, each file has its own frame(t)):
+ *   EDWARDS  twisted Edwards curve over F_p, every point; double-and-add k·G hops live toward the vow point Q.
+ *   GRAYSCOTT reaction–diffusion field seeded by the receipt, F/k from the sig, a probe reads u, v, ∇²v live.
+ *   LORENZ   Lorenz drive + Pecora–Carroll twin: approved locks (|e| → 0), refused diverges, unanswered freezes.
+ *   HILBERT  1024 tap bits on an order-5 Hilbert curve; a cursor walks d → (x,y).
  * Colours: atlas-common PALETTES via ATLAS.tint. MIT. */
 (function (root) {
 'use strict';
 const node = typeof module !== 'undefined' && module.exports;
 const SEAL = node ? require('../seal.js') : root.SEAL, VOWFIELD = node ? require('../vowfield.js') : root.VOWFIELD;
-if (node) require('../iris.js'); const IRIS = () => root.IRIS || globalThis.IRIS;
-const A = node ? require('./atlas-common.js') : root.ATLAS, MERKLE = node ? require('./merkle.js') : root.MERKLE, RESIDUE = node ? require('./residue.js') : root.RESIDUE, KICK = node ? require('./kickring.js') : root.KICKRING;
+const A = node ? require('./atlas-common.js') : root.ATLAS, MERKLE = node ? require('./merkle.js') : root.MERKLE, KICK = node ? require('./kickring.js') : root.KICKRING;
+const R4 = node ? { edwards: require('./edwards.js'), grayscott: require('./grayscott.js'), lorenz: require('./lorenz.js'), hilbert: require('./hilbert.js') } : { edwards: root.EDWARDS, grayscott: root.GRAYSCOTT, lorenz: root.LORENZ, hilbert: root.HILBERT };
 const LOOP = 14, REVEAL = 8, FPS = 60, TAU = 2 * Math.PI;
 const SEALTAP = { approved: 'hero', refused: 'refused', unanswered: 'unanswered' };
 const CAP = { approved: 'RECEIPT-BOUND CO-SIGN ON DEVNET', refused: 'AGENT ALONE ON DEVNET', unanswered: 'NOBODY TAPPED · DEMO' };
-const TITLE = { seal: 'SEAL', vowfield: 'VOW FIELD', iris: 'IRIS', merkle: 'MERKLE RING', residue: 'RESIDUE LATTICE', kickring: 'KICK RHYTHM RING' };
-const IDS = ['seal', 'vowfield', 'merkle', 'residue', 'kickring', 'iris'];
-const tapOf = (id, k) => id === 'seal' || id === 'iris' ? SEAL.DEVNET[id === 'seal' ? SEALTAP[k] : k] : id === 'vowfield' ? VOWFIELD.TAPS[k] : A.TAPS[k];
+const TITLE = { seal: 'SEAL', vowfield: 'VOW FIELD', merkle: 'MERKLE RING', kickring: 'KICK RHYTHM RING', edwards: 'EDWARDS ORBIT', grayscott: 'GRAY-SCOTT SEAL', lorenz: 'LORENZ TWINS', hilbert: 'HILBERT WALK' };
+const IDS = ['seal', 'vowfield', 'merkle', 'kickring', 'edwards', 'grayscott', 'lorenz', 'hilbert'];
+const tapOf = (id, k) => id === 'seal' ? SEAL.DEVNET[SEALTAP[k]] : id === 'vowfield' ? VOWFIELD.TAPS[k] : A.TAPS[k];
 const paletteTap = (id, k) => { const T = tapOf(id, k); return { receipt: T.receipt || A.TAPS[k].receipt, sig: T.sig || A.TAPS[k].sig }; };
 const cache = new Map();
 function modelOf(id, k) { const key = id + k; if (cache.has(key)) return cache.get(key); const T = tapOf(id, k);
-  const M = id === 'seal' ? SEAL.model(T) : id === 'vowfield' ? VOWFIELD.model(T) : id === 'merkle' ? MERKLE.model(T) : id === 'residue' ? RESIDUE.model(T) : id === 'kickring' ? KICK.model(T) : { digest: T.digest };
+  const M = id === 'seal' ? SEAL.model(T) : id === 'vowfield' ? VOWFIELD.model(T) : id === 'merkle' ? MERKLE.model(T) : id === 'kickring' ? KICK.model(T) : R4[id].model(T);
   cache.set(key, M); return M; }
 const frac = x => x - Math.floor(x), cl = x => x < 0 ? 0 : x > 1 ? 1 : x;
 function caption(ctx, W, title, outcome) { const s = W / 1600, S = { refused: outcome === 'refused', unanswered: outcome === 'unanswered' }, ACC = A.accent(S), sh = 46 * s, sy = W - 78 * s;
@@ -33,8 +36,7 @@ function caption(ctx, W, title, outcome) { const s = W / 1600, S = { refused: ou
 // base piece at reveal p (the existing still renderers)
 function base(id, k, ctx, W, p) { const M = modelOf(id, k);
   if (id === 'seal') SEAL.render(ctx, M, W, p); else if (id === 'vowfield') VOWFIELD.render(ctx, M, W, p);
-  else if (id === 'merkle') MERKLE.draw(ctx, M, W, p); else if (id === 'residue') RESIDUE.draw(ctx, M, W, p); else if (id === 'kickring') KICK.draw(ctx, M, W, p);
-  else if (id === 'iris') { IRIS().draw(ctx, W, M.digest, k === 'refused', p, 0); } }
+  else if (id === 'merkle') MERKLE.draw(ctx, M, W, p); else if (id === 'kickring') KICK.draw(ctx, M, W, p); }
 function glow(ctx, x, y, r, col) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
 const ACCK = k => k === 'refused' ? 'rgba(255,42,42,' : k === 'unanswered' ? 'rgba(160,170,165,' : 'rgba(255,179,71,';
 function label(ctx, W, lines, k, y0 = 140) { const s = W / 1600; ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.textAlign = 'left'; ctx.font = A.mono(13 * s);
@@ -77,22 +79,6 @@ const LIVE = {
     ctx.restore();
     const L = lev < 5 ? lev : 5, hx = A.hex(M.lv[Math.min(5, L + (lev < 5 ? 1 : 0))][0]).slice(0, 16);
     label(ctx, W, [lev < 5 ? `hashing level ${lev + 1}/5 · ${1 << (4 - lev)} nodes = SHA-256(0x01|L|R)` : `inclusion proof · leaf ${M.idx} (${M.leaves[M.idx][0]})`, `node ${hx}…`, `root ${M.rootHex.slice(0, 16)}…`, k === 'approved' ? 'proof recomputes the root ✓' : k === 'refused' ? `path cut at level ${M.cut}` : 'path climbs two levels, dims'], k); },
-  residue(ctx, W, M, k, t) { const s = W / 1600, cx = W / 2, cy = W / 2, R0 = 392 * s, N = M.N, P = i => { const a = -Math.PI / 2 + TAU * i / N; return [cx + R0 * Math.cos(a), cy + R0 * Math.sin(a)]; };
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    // the chord being drawn right now
-    const ci = t < REVEAL * .6 ? Math.floor(t / (REVEAL * .6) * N) : Math.floor(frac(t / 6) * N); if (ci > 0) { const j = M.k * ci % N, [x1, y1] = P(ci), [x2, y2] = P(j);
-      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2 * s; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); glow(ctx, x2, y2, 14 * s, 'rgba(0,255,166,.9)'); }
-    // comet on the orbit of 1
-    const O = M.orb, hops = k === 'unanswered' ? Math.ceil(O.length / 2) : O.length, hp = (t * 3) % (hops + (k === 'refused' ? 1.5 : 0)), h = Math.floor(hp), f = frac(hp);
-    for (let tr = 0; tr < 6; tr++) { const q = hp - tr * .12; if (q < 0) break; const hh = Math.floor(q), ff = frac(q); if (hh >= hops) continue; const last = hh === O.length - 1;
-      const [x1, y1] = P(O[hh]), [x2, y2] = P(O[(hh + 1) % O.length]), ff2 = k === 'refused' && last ? Math.min(ff, .5) : ff;
-      glow(ctx, x1 + (x2 - x1) * ff2, y1 + (y2 - y1) * ff2, (20 - tr * 2.6) * s, k === 'refused' && last ? 'rgba(255,42,42,.9)' : tr ? ACCK(k) + '.45)' : 'rgba(255,240,200,.95)'); }
-    // QR ring pulse: a wave of Legendre evaluations sweeping x = 0..p-1
-    const p = M.p, r1 = 440 * s, r2 = 600 * s, wv = frac(t / 5) * p, da = TAU / p;
-    for (let x = 0; x < p; x++) { const dd = Math.abs(x - wv), w = Math.max(0, 1 - Math.min(dd, p - dd) / 9); if (w <= 0 || M.qr[x] !== 1) continue; const a0 = -Math.PI / 2 + x * da;
-      ctx.fillStyle = `rgba(166,255,0,${(.85 * w).toFixed(3)})`; ctx.beginPath(); ctx.arc(cx, cy, r2 + 14 * s * w, a0 + da * .1, a0 + da * .9); ctx.arc(cx, cy, r1, a0 + da * .9, a0 + da * .1, true); ctx.fill(); }
-    ctx.restore(); const xq = Math.floor(wv) % p;
-    label(ctx, W, [`chord ${ci} → ${M.k}·${ci} mod ${N} = ${M.k * ci % N}`, `orbit of 1: ${M.k}^${Math.min(h, hops)} ≡ ${RESIDUE.powmod(M.k, Math.min(h, hops), N)} (mod ${N})  ord ${M.ord}`, `Legendre(${xq}|${p}) = ${M.qr[xq]}  ·  ${xq}^${(p - 1) / 2} mod ${p}`, k === 'approved' ? 'orbit returns to 1 ✓' : k === 'refused' ? 'last hop cut' : 'orbit stalls halfway'], k); },
   kickring(ctx, W, M, k, t) { const s = W / 1600, cx = W / 2, cy = W / 2, ang = f => -Math.PI / 2 + TAU * f, rk = 640 * s, n = M.n, rA = 170 * s, rB = 560 * s, dr = (rB - rA) / n;
     const ms = (t * 1000) % (M.T + 600), ph = Math.min(1, ms / M.T), heard = k === 'unanswered' ? 3 : 6;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -121,25 +107,20 @@ const LIVE = {
     glow(ctx, hxp(pt[0]), hyp(pt[1]), 14 * s, k === 'refused' && u > end - .03 ? 'rgba(255,42,42,.95)' : 'rgba(255,220,160,.95)');
     M.hyst.kicksT.forEach(kt => { const d = Math.abs(u - kt); if (d < .03 && kt <= end) glow(ctx, hxp(Lp[Math.round(kt * n)][0]), hyp(Lp[Math.round(kt * n)][1]), 30 * s * (1 - d / .03), 'rgba(232,163,61,.9)'); });
     ctx.restore();
-    label(ctx, W, [`RK4 streamlines · ${M.lines.length} lines · |B| ∝ 1/r³`, `B-H tracer phase ${(u).toFixed(3)} · H=${pt[0].toFixed(2)} B=${pt[1].toFixed(2)}`, k === 'approved' ? 'loop closes ✓' : k === 'refused' ? 'loop tears open' : 'loop fades'], k, 215); },
-  iris(ctx, W, M, k, t) { /* iris is fully redrawn in frame() with an animated p; nothing extra */ } };
-// iris aperture curve: approved opens and breathes, refused snaps shut, unanswered half-opens and stalls
-function irisP(k, t) { if (k === 'refused') return cl(t / 2.4); if (k === 'unanswered') return Math.min(.55, t / 6) - .05 * (1 - Math.cos(t * 1.3)) * cl(t - 6);
-  return t < REVEAL ? t / REVEAL : 1; }
+    label(ctx, W, [`RK4 streamlines · ${M.lines.length} lines · |B| ∝ 1/r³`, `B-H tracer phase ${(u).toFixed(3)} · H=${pt[0].toFixed(2)} B=${pt[1].toFixed(2)}`, k === 'approved' ? 'loop closes ✓' : k === 'refused' ? 'loop tears open' : 'loop fades'], k, 215); } };
 // frame t (seconds, wraps at LOOP). still = false on purpose: this is the live frame.
-function frame(id, k, ctx0, W, t) { t = ((t % LOOP) + LOOP) % LOOP; const P = A.palette(id, paletteTap(id, k)), ctx = A.tint(ctx0, P), M = modelOf(id, k);
-  if (id === 'iris') { const ir = IRIS(), dg = M.digest; ir.draw(ctx, W, dg, k === 'refused', cl(irisP(k, t)), t * 1000); }
-  else base(id, k, ctx, W, cl(t / REVEAL));
+function frame(id, k, ctx0, W, t) { t = ((t % LOOP) + LOOP) % LOOP; const P = A.palette(id, paletteTap(id, k)), M = modelOf(id, k);
+  if (R4[id]) { R4[id].draw(ctx0, M, W, t); return P; }   // round 4: own chrome, caption and loop fade
+  const ctx = A.tint(ctx0, P); base(id, k, ctx, W, cl(t / REVEAL));
   LIVE[id](ctx, W, M, k, t);
-  if (id === 'iris' && k === 'unanswered') { ctx.save(); try { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, W); } catch (e) {} ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = .35; ctx.fillStyle = '#030504'; ctx.fillRect(0, 0, W, W); ctx.restore(); }
   const fo = cl((t - (LOOP - .5)) / .5); if (fo > 0) { ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = fo; ctx.fillStyle = '#030504'; ctx.fillRect(0, 0, W, W); ctx.restore(); }
   caption(ctx, W, TITLE[id], k); return P; }
 // static still (p = reveal), tinted: used by the atlas grid and still.html without ?t=
-function still(id, k, ctx0, W, p = 1) { const P = A.palette(id, paletteTap(id, k)), ctx = A.tint(ctx0, P); if (id === 'iris') IRIS().draw(ctx, W, modelOf(id, k).digest, k === 'refused', k === 'unanswered' ? Math.min(p, .3) : p, 0); else base(id, k, ctx, W, p);
-  if (id === 'iris' && k === 'unanswered') { ctx.save(); try { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, W); } catch (e) {} ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = .45; ctx.fillStyle = '#030504'; ctx.fillRect(0, 0, W, W); ctx.restore(); }
+function still(id, k, ctx0, W, p = 1) { const P = A.palette(id, paletteTap(id, k)); if (R4[id]) { R4[id].draw(ctx0, modelOf(id, k), W, 9); return P; }
+  const ctx = A.tint(ctx0, P); base(id, k, ctx, W, p);
   caption(ctx, W, TITLE[id], k); return P; }
 function play(canvas, id, k, opt = {}) { const ctx = canvas.getContext('2d'); let stop = false, t0 = null;
   const loop = now => { if (stop) return; if (t0 == null) t0 = now; frame(id, k, ctx, canvas.width, (now - t0) / 1000 + (opt.offset || 0)); requestAnimationFrame(loop); }; requestAnimationFrame(loop); return () => { stop = true; }; }
-const ATLAS_LIVE = { frame, still, play, IDS, TITLE, LOOP, REVEAL, FPS, irisP, version: 'atlas-live-v1' };
+const ATLAS_LIVE = { frame, still, play, IDS, TITLE, LOOP, REVEAL, FPS, version: 'atlas-live-v2' };
 if (node) module.exports = ATLAS_LIVE; else root.ATLAS_LIVE = ATLAS_LIVE;
 })(typeof window !== 'undefined' ? window : globalThis);

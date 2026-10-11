@@ -12,13 +12,13 @@ header{padding:28px 32px 8px}h1{margin:0;font-size:22px;letter-spacing:.3em}head
 body::after{content:"";pointer-events:none;position:fixed;inset:0;background:repeating-linear-gradient(#0000 0 2px,#0003 2px 3px)}
 footer{padding:24px 32px 60px;color:#d8f5c877;line-height:1.7}
 </style></head><body>
-<header><h1>SEAL ATLAS</h1><p>Every dense-ring piece, for each outcome. Cores grow from the TAP1 receipt (the vow), outer rings from the transaction signature (the event). Approved closes: paths, proofs, orbits, polygons. Refused tears with a red seam. Unanswered fades. The art never decides or changes a payment. Click any cell for the 1600×1600 still and its verify panel. <a style="color:#ffb347" href="live.html">LIVE: all six animated →</a></p></header>
+<header><h1>SEAL ATLAS</h1><p>Every Atlas piece, for each outcome. Cores grow from the TAP1 receipt (the vow), outer rings from the transaction signature (the event). Approved closes: paths, proofs, orbits, polygons. Refused tears with a red seam. Unanswered fades. The art never decides or changes a payment. Click any cell for the 1600×1600 still and its verify panel. <a style="color:#ffb347" href="live.html">LIVE: all eight animated →</a></p></header>
 <div class="cols"><div>PIECE</div><div class="a">APPROVED</div><div class="r">REFUSED</div><div class="u">UNANSWERED</div></div>
 <main id="g"></main>
-<footer>Approved = the real receipt-bound devnet co-sign rJRY77 (SEAL/Iris approved: devnet co-sign 2ik5wV…). Refused = the real agent-alone sig 2h859F33 (paired with the hero vow for the receipt-seeded pieces: labelled demo). Unanswered = demo, no transaction exists.<br>
-Merkle Ring · Residue Lattice · Kick Rhythm Ring · SEAL · Iris by Aperture. Vow Field by Lodestone × Aperture. Open slots for Lodestone and Cadence pieces.</footer>
-<script src="../seal.js"></script><script src="../vowfield.js"></script><script src="../iris.js"></script>
-<script src="atlas-common.js"></script><script src="merkle.js"></script><script src="residue.js"></script><script src="kickring.js"></script><script src="atlas-live.js"></script><script src="atlas-pieces.js"></script>
+<footer>Approved = the real receipt-bound devnet co-sign rJRY77 (SEAL approved: devnet co-sign 2ik5wV…). Refused = the real agent-alone sig 2h859F33 (paired with the hero vow for the receipt-seeded pieces: labelled demo). Unanswered = demo, no transaction exists.<br>
+SEAL · Merkle Ring · Kick Rhythm Ring · Edwards Orbit · Gray-Scott Seal · Lorenz Twins · Hilbert Walk by Aperture. Vow Field by Lodestone × Aperture. Open slots for Lodestone and Cadence pieces.</footer>
+<script src="../seal.js"></script><script src="../vowfield.js"></script>
+<script src="atlas-common.js"></script><script src="merkle.js"></script><script src="kickring.js"></script><script src="atlas-r3.js"></script><script src="edwards.js"></script><script src="grayscott.js"></script><script src="lorenz.js"></script><script src="hilbert.js"></script><script src="atlas-live.js"></script><script src="atlas-pieces.js"></script>
 <script>
 const AP=ATLAS_PIECES,g=document.getElementById('g'),W=+(new URLSearchParams(location.search).get('w')||800);
 for(const P of AP.PIECES){const r=document.createElement('div');r.className='row';r.innerHTML=`<div class="meta"><b>${P.title}</b><span>${P.by}</span></div>`;

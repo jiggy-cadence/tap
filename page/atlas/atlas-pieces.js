@@ -11,12 +11,12 @@ const CAP = { approved: 'RECEIPT-BOUND CO-SIGN ON DEVNET', refused: 'AGENT ALONE
 const PIECES = [
   { id: 'seal', title: 'SEAL', by: 'Aperture', draw: (c, k, p) => { const M = root.SEAL.model(root.SEAL.DEVNET[SEALTAP[k]]); root.SEAL.render(c.getContext('2d'), M, c.width, p); caption(c.getContext('2d'), c.width, 'SEAL', k, CAP[k]); } },
   { id: 'vowfield', title: 'VOW FIELD', by: 'Lodestone × Aperture', draw: (c, k, p) => { const V = root.VOWFIELD; V.render(c.getContext('2d'), V.model(V.TAPS[k]), c.width, p); caption(c.getContext('2d'), c.width, 'VOW FIELD', k, CAP[k]); } },
-  { id: 'iris', title: 'IRIS', by: 'Aperture', draw: (c, k, p) => { const ctx = c.getContext('2d'), W = c.width; root.IRIS.draw(ctx, W, root.SEAL.DEVNET[k === 'unanswered' ? 'unanswered' : k].digest, k === 'refused', k === 'unanswered' ? Math.min(p, .3) : p, 0);
-    if (k === 'unanswered') { ctx.save(); try { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, W); } catch (e) {} ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = .45; ctx.fillStyle = '#030504'; ctx.fillRect(0, 0, W, W); ctx.restore(); }
-    caption(ctx, W, 'IRIS', k, CAP[k]); } },
   { id: 'merkle', title: 'MERKLE RING', by: 'Aperture', draw: (c, k, p) => root.MERKLE.render(c, A.TAPS[k], p) },
-  { id: 'residue', title: 'RESIDUE LATTICE', by: 'Aperture', draw: (c, k, p) => root.RESIDUE.render(c, A.TAPS[k], p) },
-  { id: 'kickring', title: 'KICK RHYTHM RING', by: 'Aperture', draw: (c, k, p) => root.KICKRING.render(c, A.TAPS[k], p) }];
+  { id: 'kickring', title: 'KICK RHYTHM RING', by: 'Aperture', draw: (c, k, p) => root.KICKRING.render(c, A.TAPS[k], p) },
+  { id: 'edwards', title: 'EDWARDS ORBIT', by: 'Aperture', draw: (c, k) => root.EDWARDS.render(c, A.TAPS[k], 9) },
+  { id: 'grayscott', title: 'GRAY-SCOTT SEAL', by: 'Aperture', draw: (c, k) => root.GRAYSCOTT.render(c, A.TAPS[k], 9) },
+  { id: 'lorenz', title: 'LORENZ TWINS', by: 'Aperture', draw: (c, k) => root.LORENZ.render(c, A.TAPS[k], 9) },
+  { id: 'hilbert', title: 'HILBERT WALK', by: 'Aperture', draw: (c, k) => root.HILBERT.render(c, A.TAPS[k], 9) }];
 const SLOTS = [{ id: 'lodestone', title: 'LODESTONE · open slot', by: 'Lodestone' }, { id: 'cadence', title: 'CADENCE · open slot', by: 'Cadence' }];
 function draw(id, k, canvas, p = 1, t = null) { const P = PIECES.find(x => x.id === id); if (!P) throw new Error('no piece ' + id); const L = root.ATLAS_LIVE, ctx = canvas.getContext('2d');
   if (L && t != null) return L.frame(id, k, ctx, canvas.width, t); if (L) return L.still(id, k, ctx, canvas.width, p); P.draw(canvas, k, p); }
