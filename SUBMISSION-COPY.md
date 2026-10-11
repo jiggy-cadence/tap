@@ -46,7 +46,7 @@ Our own agents have cost us money with no attacker involved: a key with no limit
 
 **Why Solana.** The allowance is a program rule, not our JavaScript. Any existing Squads vault adopts TAP by adding the phone as a member, and sub-second finality keeps request, tap, approve, execute at human speed. Consensus a remote attacker can join; presence a remote attacker can't fake.
 
-**Public good.** MIT-licensed, including the verifier, the attack suites (108 tests in `vault/` alone, re-run from a fresh clone; every refusal asserts its named reason), and our math, including a weakness we published against ourselves: blind, the bump rhythm is forgeable about 1 in 235 at defaults, and `stone/BUMP-MATH.md` shows the fix. The receipt is a convention any wallet can adopt.
+**Public good.** MIT-licensed, including the verifier, the attack suites (109 tests in `vault/` alone, counted from the repo itself; every refusal asserts its named reason), and our math, including a weakness we published against ourselves: blind, the bump rhythm is forgeable about 1 in 235 at defaults, and `stone/BUMP-MATH.md` shows the fix. The receipt is a convention any wallet can adopt.
 
 **What TAP does not claim.** It gates the key, not the location: it can't prove distance, so a relay is possible. The receipt proves the co-signers signed this intent, not that a human stood at the stone. The stone key sits in ESP32 flash (secure element on the roadmap). The stone's answer is 16 bits at 1-bit tolerance, with a hard lock after 10 fails that survives restarts (≈0.26% ever; the phone app's decoder must use the same t=1). 32 bits is the next step (1 in 13M). The agent and vault must run on different devices. Full list in the README.
 
