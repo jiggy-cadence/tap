@@ -25,3 +25,14 @@ arduino-cli 1.5.1, `esp32:esp32@3.3.12`, FQBN `esp32:esp32:esp32`: **compiles**,
 New commands: `spub` (prints the public key) and `ssign <194hex>` (BOOT press required, then `SSIG <ctr> <sig> <msg>` + pattern). The key is generated on first boot into NVS namespace `tapstone`.
 Host tests: `firmware/test/run.sh` now runs stone_safety (17) + stone_sign (33) and diffs `stone_vectors.json`.
 **Compiled, NOT run on hardware.** Ed25519 timing and stack depth on the stone are UNMEASURED.
+
+## Touch pad fallback (2026-10-11, Aperture): no button or parts needed
+Jiggy's stone has no added button, so the stone now also accepts a **capacitive touch pad on GPIO4 (touch channel T0)**.
+- **Wire:** push one jumper or bare wire into the pin labelled **D4 / IO4 / G4**. Tape the free end to a coin or a bit of foil on the stone's surface. Nothing else connects to that wire. GPIO4 is free (solenoid 26, LED 2, BOOT 0).
+- **Boot:** keep your hand off the pad for ~1 s after reset. The stone samples it 32 times, prints `TOUCHPAD GPIO4 baseline=N threshold=M ok`. If it prints `DISABLED`, the pad is missing, shorted or was touched at boot; press EN to retry. BOOT still works.
+- **Rule:** either input counts (pad touch or BOOT press). If **either** is already active when `ssign` arrives → `REFUSED TOUCH_HELD`. Pad = 6 consecutive reads below 70% of baseline (~30 ms). Thresholds are judgement; retune from the bench baseline.
+- `key <64hex>` accepts BOOT held **or** pad held.
+- Copy **six** files into `solenoid_blink/`: the `.ino`, `stone_safety.h`, `stone_sign.h`, `stone_sign.c`, `tweetnacl_impl.h`, `touch_logic.h`.
+- arduino-cli, `esp32:esp32@3.3.12`, FQBN `esp32:esp32:esp32`: **compiles**, 320,912 B flash (24%), 22,620 B RAM (6%).
+- Host tests: `firmware/test/touch_logic_test.c` (19) for calibration, debounce and the held/either rule. Bench walk-through: `firmware/bench/BENCH.md`.
+**Compiled, NOT run on hardware.** Real touchRead values on this board are unmeasured.

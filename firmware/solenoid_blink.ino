@@ -13,6 +13,9 @@
  *                    paralleled -> ~1A sink; ONE channel alone is exactly the
  *                    solenoid's 500mA @ 9V rating, which is why we parallel)
  *   ESP32 GPIO26 -> ULN2003 IN1 + IN2 tied together (logic inputs, tiny current)
+ *   TOUCH PAD (optional, no parts): a jumper/bare wire into GPIO4 (pin labelled D4/IO4 = T0),
+ *     free end taped to a coin or foil on the stone's surface. Nothing else on that wire.
+ *     Calibrated at boot: DON'T touch it for the first second after reset.
  *   COMMON GROUND: 5991 GND == ULN2003 GND == ESP32 GND. Without this, nothing works.
  *   ESP32 itself powered from the Mac over micro-USB (data-capable cable).
  *
@@ -26,7 +29,7 @@
  * Serial console @ 115200:
  *   blink        one keyed ceremony (fresh random challenge, current key)
  *   loop         toggle looping ceremonies (default OFF at boot — type it)
- *   key <64hex>  set 32-byte session key (REFUSED unless BOOT/GPIO0 held)
+ *   key <64hex>  set 32-byte session key (REFUSED unless BOOT/GPIO0 or pad/GPIO4 held)
  *   chal <64hex> set 32-byte challenge, run one ceremony
  *   fire <ms>    raw solenoid on for <ms> (max 2000) — for the meter check
  *   rate <ms>    symbol period 50..1000 (default 250)
@@ -37,8 +40,8 @@
  *                UNBENCHED on hardware (sim parameters only).
  *   spub         print this stone's Ed25519 public key (for pairing; public, safe to print)
  *   ssign <194hex>  Stage 1 stone-attested approval: cluster(1B) || vault(32B) || sha256(tx msg)(32B)
- *                || sha256(tapId)(32B), hex. Stone prints TOUCH, then needs the BOOT button PRESSED
- *                (released at request time, pressed within 10 s). Only then: counter+1 written to NVS,
+ *                || sha256(tapId)(32B), hex. Stone prints TOUCH, then needs the pad (GPIO4) TOUCHED or BOOT PRESSED
+ *                (both idle at request time, either active within 10 s). Only then: counter+1 written to NVS,
  *                Ed25519 sig over the frozen 150-byte message (docs/STONE-SIGN-FORMAT.md), printed as
  *                `SSIG <counter> <sig128hex> <msg300hex>` (refusals: `REFUSED TOUCH_HELD|NO_TOUCH|...`), then the magnet pattern for THAT message is pulsed.
  *                Serial alone can never produce a signature. NOT RUN ON HARDWARE.
@@ -46,7 +49,7 @@
  *
  * KEY, DIGEST and per-bit SYM answer prints are NEVER emitted (any build).
  * Filming: serial monitor off camera; never flash a real key with this build.
- * Re-key: hold the BOOT button (GPIO0) while sending `key <64hex>`.
+ * Re-key: hold the BOOT button (GPIO0) or touch pad (GPIO4) while sending `key <64hex>`.
  *
  * Friday-night meter check BEFORE trusting the blink:
  *   Klein MM325 on the 10A range, in series with the solenoid 9V line,
@@ -60,8 +63,11 @@
 #include <Preferences.h>        // NVS: stone seed + monotonic counter
 #include "esp_random.h"
 #include "stone_sign.h"         // Stage 1 signing core; host-tested in firmware/test/stone_sign_test.c
+#include "touch_logic.h"        // capacitive pad calibration/debounce; host-tested in firmware/test/touch_logic_test.c
 
 #define PIN_PROVISION 0         // GPIO0 = the devkit's BOOT button; must be held to re-key
+#define PIN_TOUCH 4             // GPIO4 = touch channel T0: bare wire / coin taped on = touch pad (no part needed)
+                               // free: SOL=26, LED=2, BOOT=0. Touch the pad OR press BOOT; either counts.
 // 2026-10-10 Aperture safety pass + 2026-10-11 Lodestone serial hardening.
 // Compile status: see firmware/COMPILE.md. NOT RUN ON HARDWARE.
 // Lodestone 01:46Z: stone_safety (1)(2)(3) no strike. KEY/DIGEST never printed;
@@ -265,15 +271,42 @@ static void stoneInit() {
   stone.counter = stonePrefs.getULong64("ctr", 0);
 }
 
-// Physical touch: BOOT must be UP when the request arrives (a taped-down button never counts),
-// then go DOWN within the window.
-// Returns 1 touched, 0 no touch in window, -1 button already held at request (TOUCH_HELD, Lodestone 06:22Z).
+touch_cal_t touchCal = {0, 0, 0};
+
+static void touchInit() {
+  uint16_t smp[32];
+  for (int i = 0; i < 32; i++) { smp[i] = (uint16_t)touchRead(PIN_TOUCH); delay(20); }
+  touchCal = touch_calibrate(smp, 32);
+  Serial.print(F("TOUCHPAD GPIO4 baseline=")); Serial.print(touchCal.baseline);
+  Serial.print(F(" threshold=")); Serial.print(touchCal.threshold);
+  Serial.println(touchCal.ok ? F(" ok") : F(" DISABLED (no pad / touched at boot / noisy); BOOT button still works"));
+}
+static bool bootDown() { return digitalRead(PIN_PROVISION) == LOW; }
+// debounced pad read: TOUCH_DEBOUNCE_N consecutive low reads, 5 ms apart
+static bool padDownNow() {
+  if (!touchCal.ok) return false;
+  touch_deb_t d; touch_deb_reset(&d);
+  for (unsigned i = 0; i < TOUCH_DEBOUNCE_N; i++) {
+    if (touch_step(&d, &touchCal, (uint16_t)touchRead(PIN_TOUCH))) return true;
+    if (d.count == 0) return false;   // one high read: not held
+    delay(5);
+  }
+  return false;
+}
+
+// Physical touch: BOOT up AND pad untouched when the request arrives (a taped-down button or a
+// coin held/shorted from before never counts), then EITHER goes active within the window.
+// Returns 1 touched, 0 no touch in window, -1 already active at request (TOUCH_HELD, Lodestone 06:22Z).
 static int waitForTouch() {
-  if (digitalRead(PIN_PROVISION) == LOW) return -1;
-  Serial.println(F("TOUCH: press the stone (BOOT) within 10 s"));
+  if (touch_decide(bootDown(), padDownNow(), 0, 0) < 0) return -1;
+  Serial.println(F("TOUCH: touch the pad (GPIO4) or press BOOT within 10 s"));
+  touch_deb_t d; touch_deb_reset(&d);
   unsigned long t0 = millis();
   while (millis() - t0 < TOUCH_WINDOW_MS) {
-    if (digitalRead(PIN_PROVISION) == LOW) { delay(30); if (digitalRead(PIN_PROVISION) == LOW) return 1; }
+    int boot = 0, pad = 0;
+    if (bootDown()) { delay(30); boot = bootDown(); }
+    if (touchCal.ok) pad = touch_step(&d, &touchCal, (uint16_t)touchRead(PIN_TOUCH));
+    if (touch_decide(0, 0, boot, pad) == 1) return 1;
     delay(5);
   }
   return 0;
@@ -299,7 +332,7 @@ static void pulsePattern(uint16_t bits) {
 static void stoneSign(const uint8_t *req) {   // req = 97 bytes
   if (key_is_weak(sessionKey, 32)) { Serial.println(F("REFUSED: weak session key (pattern needs K_pair)")); return; }
   int touch = waitForTouch();
-  if (touch < 0) { Serial.println(F("REFUSED TOUCH_HELD: release the BOOT button, then press it after TOUCH")); return; }
+  if (touch < 0) { Serial.println(F("REFUSED TOUCH_HELD: let go of the pad/BOOT, send again, touch after TOUCH")); return; }
   uint8_t sig[STONE_SIG_LEN], msg[STONE_MSG_LEN]; uint64_t ctr = 0;
   int rc = stone_sign_request(&stone, req[0], req + 1, req + 33, req + 65, touch, stonePersist, NULL, sig, msg, &ctr);
   if (rc != STONE_OK) { Serial.print(F("REFUSED ")); Serial.println(stoneCodeName(rc)); return; }
@@ -338,8 +371,8 @@ static void handleCommand(String cmd) {
   } else if (cmd.startsWith("key ")) {
     // Re-keying needs a HUMAN AT THE STONE: hold the BOOT button (GPIO0) while sending `key`.
     // Without it, the agent's host (or whoever plugs into a stolen stone) could silently swap the key.
-    if (digitalRead(PIN_PROVISION) != LOW) {
-      Serial.println(F("REFUSED: hold the BOOT button while sending key (physical presence required)"));
+    if (!bootDown() && !padDownNow()) {
+      Serial.println(F("REFUSED: hold BOOT or the touch pad while sending key (physical presence required)"));
     } else {
       uint8_t nk[32];
       if (!parseHex(cmd.substring(4), nk, 32)) {
@@ -396,6 +429,7 @@ void setup() {
   delay(500);
   Serial.println(F("\nTAP knot-stone solenoid blink v1 + stone-sign v1"));
   stoneInit();
+  touchInit();   // hands off the pad for ~0.7 s after reset
   if (key_is_weak(sessionKey, 32)) Serial.println(F("WARN: boot key is weak; ceremonies refused until `key <64hex>`"));
   else if (sessionKey[0] == 0x01 && sessionKey[31] == 0x20) Serial.println(F("NOTE: DEMO key 01..20 loaded; rotate with `key <64hex>` per Fair run"));
   Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | spub | ssign <194hex> | help"));

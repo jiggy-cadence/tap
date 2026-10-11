@@ -21,8 +21,8 @@ Magnet pattern: the `10101010` preamble, then 16 bits **LSB-first** of `HMAC-SHA
 
 ## Stone (firmware/solenoid_blink.ino + stone_sign.{h,c})
 `ssign <194 hex>` = cluster(1) ‖ vault(32) ‖ txHash(32) ‖ tapIdHash(32). The stone then:
-1. Refuses `TOUCH_HELD` if BOOT/GPIO0 is already down when the request arrives (so a taped-down button doesn't count) [L].
-2. Prints `TOUCH` and waits up to 10 s for a press, debounced 30 ms. No press → `REFUSED NO_TOUCH`.
+1. Refuses `TOUCH_HELD` if BOOT/GPIO0 is already down or the GPIO4 touch pad is already touched when the request arrives (so a taped-down button doesn't count) [L].
+2. Prints `TOUCH` and waits up to 10 s for a BOOT press or pad touch, each debounced ~30 ms. No press → `REFUSED NO_TOUCH`.
 3. Runs `stone_sign_request`: key, then cluster 1..3, then non-zero inputs, then touch, then counter+1 **persisted and read back** from NVS, then sign. On any failure no signature exists.
 4. Prints `SSIG <counter> <sig 128 hex> <msg 300 hex>`. Hex comes out uppercase, so the phone lowercases it. Everything printed is public. The seed is never printed, and check.sh guards against that.
 5. Pulses the pattern.
@@ -50,7 +50,7 @@ Checks 2 to 7 only produce named refusals. The security comes from #8: the signa
 - **A fully hijacked phone is not stopped.** The phone is the verifier. Only Stage 2 (stone as a Squads member) moves the check on chain.
 - **Relay is not stopped.** An accomplice holding a phone on the real stone can relay the field (C4). The pattern stops a *replayed* pattern, not a *live relayed* one. Only distance bounding (UWB) addresses that.
 - **Chip key extraction (WROOM-32D) is not stopped.** The seed sits in plaintext NVS. Without flash encryption and Secure Boot V2, and ideally an S3/C3 or ATECC608, "the stone signed" means "firmware on an unhardened chip signed" (H4).
-- Touch is the BOOT button, not a capacitive pad. Ed25519 time and stack use on the stone are **UNMEASURED** (about 29 ms is a published ESP32 figure).
+- Touch is the BOOT button **or** a capacitive pad on GPIO4 (T0), either counts. A pad proves a conductive body touched it, not which person. Ed25519 time and stack use on the stone are **UNMEASURED** (about 29 ms is a published ESP32 figure).
 - With no pairing stored, the adapter keeps the pre-Stage-1 behaviour and reports `stoneAttested:false`. Deleting the pairing needs write access to phone storage, which is the hijacked-phone case above.
 
 ## Tests (where the claims are checked)
