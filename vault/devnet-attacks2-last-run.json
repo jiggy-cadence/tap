@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-11T03:46:59.651Z",
+  "squads": {
+    "config": "3TTBdXmYzkXWzRiF3tJ3J9NBUMWwtBE2nUXpaY3F5MqXiWM5T7nZ1yxWwFtVwqP7ydD57xBGrEToWUG7xSKoR2FJ",
+    "vault": "squads_vault_transfer: account at index is not a VaultTransaction (config/batch proposal?)",
+    "execute": "2rQXhH2dk5M5638wvGc3n3FKnKzQvr4tRiuJgrVt76LkgCAfLci5oBhW8yMC8SEgJ1yt5UVKsKeSuHQo5ZrfWSup",
+    "executeErr": "InvalidProposalStatus",
+    "threshold": 2
+  },
+  "spl": {
+    "approve": "4wwg6AhToaJKxaD2u5sJpVxMqAS7mQ364nZG2HQgLLfxXohc5Tq6W8d1vxmrUocRT8HAU7mDoExkhF91gUCMkviz",
+    "approveErr": {
+      "InstructionError": [
+        0,
+        "MissingRequiredSignature"
+      ]
+    },
+    "setAuthority": "461Rg79oMKi9hzut6xFKxQ9v44j45tCvaYWAYHSKHCxeEZNVaZPPuKWMPoDYLD1TKhMawMfXcc87W7PL6Dhu4PSK",
+    "setAuthorityErr": {
+      "InstructionError": [
+        0,
+        "MissingRequiredSignature"
+      ]
+    },
+    "ownerStillMultisig": true
+  }
+}
