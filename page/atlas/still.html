@@ -2,8 +2,8 @@
 <style>html,body{margin:0;background:#030504}canvas{display:block;width:100vw;height:100vw}</style></head><body>
 <canvas id="c" width="1600" height="1600"></canvas>
 <script src="../seal.js"></script><script src="../vowfield.js"></script><script src="../iris.js"></script>
-<script src="atlas-common.js"></script><script src="merkle.js"></script><script src="residue.js"></script><script src="kickring.js"></script><script src="atlas-pieces.js"></script>
+<script src="atlas-common.js"></script><script src="merkle.js"></script><script src="residue.js"></script><script src="kickring.js"></script><script src="atlas-live.js"></script><script src="atlas-pieces.js"></script>
 <script>
 const q=new URLSearchParams(location.search),c=document.getElementById('c'),W=+(q.get('w')||1600);c.width=c.height=W;
-ATLAS_PIECES.draw(q.get('piece')||'merkle',q.get('tap')||'approved',c,q.has('p')?+q.get('p'):1);window.READY=1;
+ATLAS_PIECES.draw(q.get('piece')||'merkle',q.get('tap')||'approved',c,q.has('p')?+q.get('p'):1,q.has('t')?+q.get('t'):null);window.READY=1;
 </script></body></html>

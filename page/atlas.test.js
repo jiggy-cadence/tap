@@ -48,4 +48,17 @@ t('KICK: E(k,n) has k onsets, maximally even (onset gaps differ by at most 1), k
     const on = M.rh.map((v, i) => v ? i : -1).filter(i => i >= 0), gaps = on.map((v, i) => ((on[(i + 1) % on.length] - v) + M.n) % M.n || M.n); assert(Math.max(...gaps) - Math.min(...gaps) <= 1); } });
 t('KICK: each kick snaps to its nearest step; |offset| <= step/2; ms labels drawn', () => { for (const k of OUT) { const M = KR.model(A.TAPS[k]); M.snap.forEach(s => assert(Math.abs(s.off) <= M.step / 2 + 1));
   const r = recorder(); KR.render(r.canvas, A.TAPS[k], 1); const L = r.log.join('\n'); M.kicks.forEach(ms => assert(L.includes('fillText(' + ms + 'ms'))); } });
+// ---- round 3: palettes + live frames
+const LV = require('./atlas/atlas-live.js');
+const frameHash = (id, k, tt) => { const r = recorder(); LV.frame(id, k, r.canvas, 800, tt); return crypto.createHash('sha256').update(r.log.join('\n')).digest('hex'); };
+t('LIVE: frame t is deterministic for every piece × outcome (t = 0.5, 3.25, 7.9, 11)', () => { for (const id of LV.IDS) for (const k of OUT) for (const tt of [0.5, 3.25, 7.9, 11]) assert.strictEqual(frameHash(id, k, tt), frameHash(id, k, tt)); });
+t('LIVE: frames move (t=2 != t=6 != t=10) and loop (t == t + LOOP)', () => { for (const id of LV.IDS) { const h = [2, 6, 10].map(x => frameHash(id, 'approved', x)); assert.strictEqual(new Set(h).size, 3, id); assert.strictEqual(frameHash(id, 'approved', 4.5), frameHash(id, 'approved', 4.5 + LV.LOOP)); } });
+t('LIVE: outcomes differ at the same t', () => { for (const id of LV.IDS) assert.strictEqual(new Set(OUT.map(k => frameHash(id, k, 9))).size, 3, id); });
+t('PALETTES: six pieces, distinct hue pairs; lime maps to hues >= 20° apart; red, amber, grey untouched', () => { const ids = Object.keys(A.PALETTES); assert.strictEqual(ids.length, 6);
+  assert.strictEqual(new Set(ids.map(id => A.PALETTES[id].a[0] + '/' + A.PALETTES[id].b[0])).size, 6);
+  const lime = id => A.rgb2hsl(...A.parseColor(A.remap('rgba(166,255,0,1)', A.palette(id))).slice(0, 3))[0], hd = (x, y) => { const d = Math.abs(x - y) % 360; return Math.min(d, 360 - d); };
+  const sel = ids.filter(i => i !== 'iris'), hs = sel.map(lime); for (let i = 0; i < hs.length; i++) for (let j = i + 1; j < hs.length; j++) assert.ok(hd(hs[i], hs[j]) >= 20, sel[i] + ' vs ' + sel[j] + ' ' + hs[i] + ' ' + hs[j]);
+  for (const id of ids) { const P = A.palette(id, A.TAPS.approved); assert.strictEqual(A.remap('#ff2a2a', P), '#ff2a2a'); assert.strictEqual(A.remap('rgba(255,179,71,.6)', P), 'rgba(255,179,71,.6)'); assert.strictEqual(A.remap('#808080', P), '#808080'); } });
+t('PALETTES: per-tap hue jitter is deterministic and bounded (±8°)', () => { for (const id of Object.keys(A.PALETTES)) for (const k of OUT) { const a = A.palette(id, A.TAPS[k]), b = A.palette(id, { ...A.TAPS[k] }); assert.strictEqual(a.jitter, b.jitter); assert.ok(Math.abs(a.jitter) <= 8); } });
+t('PALETTES: no live frame still uses the old lime #a6ff00 / teal #00ffa6', () => { for (const id of LV.IDS) { const r = recorder(); LV.frame(id, 'approved', r.canvas, 800, 9); const L = r.log.join('\n'); assert.ok(!/rgba\(166,255,0,|rgba\(0,255,166,|#a6ff00|#00ffa6/.test(L), id); } });
 console.log(n + '/' + n + ' pass');

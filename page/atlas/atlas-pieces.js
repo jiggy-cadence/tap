@@ -18,6 +18,7 @@ const PIECES = [
   { id: 'residue', title: 'RESIDUE LATTICE', by: 'Aperture', draw: (c, k, p) => root.RESIDUE.render(c, A.TAPS[k], p) },
   { id: 'kickring', title: 'KICK RHYTHM RING', by: 'Aperture', draw: (c, k, p) => root.KICKRING.render(c, A.TAPS[k], p) }];
 const SLOTS = [{ id: 'lodestone', title: 'LODESTONE · open slot', by: 'Lodestone' }, { id: 'cadence', title: 'CADENCE · open slot', by: 'Cadence' }];
-function draw(id, k, canvas, p = 1) { const P = PIECES.find(x => x.id === id); if (!P) throw new Error('no piece ' + id); P.draw(canvas, k, p); }
+function draw(id, k, canvas, p = 1, t = null) { const P = PIECES.find(x => x.id === id); if (!P) throw new Error('no piece ' + id); const L = root.ATLAS_LIVE, ctx = canvas.getContext('2d');
+  if (L && t != null) return L.frame(id, k, ctx, canvas.width, t); if (L) return L.still(id, k, ctx, canvas.width, p); P.draw(canvas, k, p); }
 root.ATLAS_PIECES = { PIECES, SLOTS, draw, caption, OUTCOMES: ['approved', 'refused', 'unanswered'] };
 })(window);

@@ -59,7 +59,44 @@ function chrome(ctx, W, S, o) { const s = W / 1600, ACC = accent(S);
   const sh = 46 * s, sy = W - 78 * s; ctx.fillStyle = 'rgba(0,0,0,.78)'; ctx.fillRect(0, sy, W, sh); ctx.fillStyle = ACC; ctx.fillRect(0, sy, W, 1.5 * s); ctx.fillRect(0, sy + sh - 1.5 * s, W, 1.5 * s);
   ctx.textAlign = 'center'; ctx.font = 'bold ' + mono(19 * s); ctx.fillStyle = S.unanswered ? COL.ash : COL.g; ctx.fillText(['TAP', o.title, S.outcome.toUpperCase(), o.tap.caption].join('  ·  '), W / 2, sy + 30 * s);
   ctx.fillStyle = 'rgba(0,0,0,.22)'; for (let y = 0; y < W; y += 3 * s) ctx.fillRect(0, y, W, Math.max(1, s)); }
+
+// ---- PALETTES (round 3): one palette per piece, all on near-black. Red = refuse, amber = approve stay fixed across the set.
+// The pieces were drawn in the SEAL lime/teal register; tint() remaps that green family per piece at the canvas boundary:
+//   lime-ish (hue ~80) -> palette.a · teal-ish (hue ~160) -> palette.b · near-black -> tinted toward palette.b · pale neutrals -> faint b tint.
+//   red (hue <14 or >346), amber/copper (14..60), pure greys and near-white are never touched.
+// Per-tap hue: jitter = (sha256("TAP-ATLAS-HUE-v1"|piece|receipt|sig)[0]/255 - .5) * 16 degrees on a and b. Deterministic.
+const PALETTES = {
+  seal:     { name: 'teal + magenta',        a: [298, .95], b: [170, .95] },
+  vowfield: { name: 'copper + ice blue',     a: [204, .85], b: [190, .70], keepWarm: true },
+  merkle:   { name: 'violet + gold',         a: [50, .85],  b: [268, .80] },
+  residue:  { name: 'cyan + rose',           a: [338, .8], b: [192, .95] },
+  kickring: { name: 'orange + electric blue', a: [24, 1],   b: [214, 1] },
+  iris:     { name: 'amber + deep indigo',   a: [38, .9],   b: [250, .75], warmLowToB: true } };
+const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x;
+function rgb2hsl(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; if (mx === mn) return [0, 0, l];
+  const d = mx - mn, s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); let h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [h * 60, s, l]; }
+function hsl2rgb(h, s, l) { h = ((h % 360) + 360) % 360 / 360; if (!s) return [l * 255, l * 255, l * 255]; const q = l < .5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const f = t => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < .5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; }; return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255]; }
+function parseColor(c) { if (typeof c !== 'string') return null; let m = c.match(/^#([0-9a-f]{6})$/i); if (m) { const v = parseInt(m[1], 16); return [v >> 16, v >> 8 & 255, v & 255, 1]; }
+  m = c.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/); return m ? [+m[1], +m[2], +m[3], m[4] == null ? 1 : +m[4]] : null; }
+function palette(piece, tap) { const P = PALETTES[piece]; if (!P) throw new Error('no palette ' + piece); let j = 0;
+  if (tap) { const sg = /^0+$/.test(tap.sig || '0') ? new Uint8Array(64) : b58decode(tap.sig); j = (sha256(cat(utf8('TAP-ATLAS-HUE-v1|' + piece + '|'), tap.receipt ? unhex(tap.receipt) : new Uint8Array(32), sg))[0] / 255 - .5) * 16; }
+  return { ...P, piece, jitter: j, a: [P.a[0] + j, P.a[1]], b: [P.b[0] + j, P.b[1]] }; }
+function remap(c, P) { const v = parseColor(c); if (!v) return c; const [r, g, b, al] = v, [h, s, l] = rgb2hsl(r, g, b); let o = null;
+  if (s < .02 || l > .9) return c;                                   // greys (incl. saturation-composite #808080), near-white sparks
+  if (l < .12) o = hsl2rgb(P.b[0], Math.min(.6, s + .25), l * 1.05);  // near-black ground, tinted
+  else if (s > .5 && (h < 14 || h > 346)) return c;                   // refuse red: fixed
+  else if (h >= 14 && h <= 60) { if (P.warmLowToB && (al <= .2 || l < .2)) o = hsl2rgb(P.b[0], P.b[1], Math.max(l, .45)); else return c; } // amber/copper: fixed
+  else if (s < .35) o = hsl2rgb(P.b[0], .28, l);                     // pale neutrals (bone, ash): faint tint
+  else if (h > 60 && h < 176) { const t = clamp01((h - 80) / 80), A = hsl2rgb(P.a[0], P.a[1] * s, clamp01(l * (P.a[0] > 200 && P.a[0] < 290 ? 1.05 : 1))), B = hsl2rgb(P.b[0], P.b[1] * s, l); o = A.map((x, i) => x + (B[i] - x) * t); }
+  else return c;
+  const R = o.map(x => Math.round(Math.max(0, Math.min(255, x)))); return al === 1 && c[0] === '#' ? '#' + R.map(x => x.toString(16).padStart(2, '0')).join('') : `rgba(${R[0]},${R[1]},${R[2]},${al})`; }
+// tint(ctx, P): a ctx wrapper that remaps every colour set on it (fill/stroke/shadow + gradient stops). Draw order and geometry unchanged.
+function tint(ctx, P) { const cache = new Map(), m = c => { if (typeof c !== 'string') return c; let r = cache.get(c); if (r === undefined) { r = remap(c, P); cache.set(c, r); } return r; }, fns = new Map();
+  return new Proxy(ctx, { get(t, k) { if (k === '__tinted') return P; if (k === 'createRadialGradient' || k === 'createLinearGradient') return (...a) => { const g = t[k](...a), add = g.addColorStop.bind(g); g.addColorStop = (o, c) => add(o, m(c)); return g; };
+      const v = t[k]; if (typeof v !== 'function') return v; let f = fns.get(k); if (!f) { f = v.bind(t); fns.set(k, f); } return f; },
+    set(t, k, v) { t[k] = (k === 'fillStyle' || k === 'strokeStyle' || k === 'shadowColor') ? m(v) : v; return true; } }); }
 const sh = h => h.slice(0, 18) + '…' + h.slice(-8);
-const ATLAS = { seeds, stream, TAPS, COL, accent, ease, seg, mono, background, hexRing, chrome, sha256, hex, unhex, cat, utf8, kickSchedule, sh };
+const ATLAS = { seeds, stream, TAPS, COL, accent, ease, seg, mono, background, hexRing, chrome, sha256, hex, unhex, cat, utf8, kickSchedule, sh, PALETTES, palette, remap, tint, parseColor, rgb2hsl, hsl2rgb };
 if (typeof module !== 'undefined' && module.exports) module.exports = ATLAS; else root.ATLAS = ATLAS;
 })(typeof window !== 'undefined' ? window : globalThis);
