@@ -12,7 +12,8 @@ const { canon } = require('./canon');
 // The tap receipt written INTO the tx: "TAP1:" + sha256("TAP1|" + canon(stored intent)). Anyone can recompute it
 // from the intent and see it on the explorer. The phone only signs if the memo is exactly this (or, unless
 // intent.requireMemo, absent), so the agent cannot put a false receipt on chain under the phone signature.
-const tapMemo = intent => 'TAP1:' + require('crypto').createHash('sha256').update('TAP1|' + canon((({ requireMemo, ...rest }) => rest)(intent))).digest('hex');
+const tapMemo = intent => { const { requireMemo, ...rest } = intent; const h = require('crypto').createHash('sha256').update('TAP1|' + canon(rest)).digest('hex');
+  return rest.tapId ? `TAP1:${rest.tapId}:${h}` : `TAP1:${h}`; };   // tapId rides in the memo so verifiers can rebuild the intent
 const memoIx = intent => new web3.TransactionInstruction({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(tapMemo(intent)) });
 
 // intent: { feePayer, source, mint, destination, multisig, amount (string|bigint, base units), decimals }
@@ -62,4 +63,19 @@ function cosign(msgBytes, intent, phoneKeypair) {
   return { ok: true, signature: nacl.sign.detached(Buffer.from(msgBytes), phoneKeypair.secretKey), parsed: r.parsed };
 }
 
-module.exports = { inspect, cosign, tapMemo, memoIx, MEMO_PROGRAM };
+// SINGLE USE. cosign() is pure: on its own it would sign every fresh-blockhash copy of an approved payment
+// (measured 2026-10-11: one tap, 5/5 distinct txs signed = drain in 5-unit steps). The phone must use a
+// cosigner: each stored intent carries a per-ceremony tapId (so two real taps for the same payment differ)
+// and is consumed by its first signature. Persist `used` across restarts in the app (AsyncStorage).
+function makeCosigner(used = new Set()) {
+  return function cosignOnce(msgBytes, intent, phoneKeypair) {
+    if (!intent || typeof intent.tapId !== "string" || intent.tapId.length < 16) return { ok: false, refused: "stored intent has no tapId (single-use cannot be enforced)" };
+    const id = tapMemo(intent);
+    if (used.has(id)) return { ok: false, refused: "already used: this tap was spent (replay)" };
+    const r = cosign(msgBytes, intent, phoneKeypair);
+    if (r.ok) used.add(id);
+    return r;
+  };
+}
+
+module.exports = { inspect, cosign, makeCosigner, tapMemo, memoIx, MEMO_PROGRAM };

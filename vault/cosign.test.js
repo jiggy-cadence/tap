@@ -4,7 +4,7 @@
 const web3 = require('@solana/web3.js');
 const spl = require('@solana/spl-token');
 const nacl = require('tweetnacl');
-const { cosign, memoIx, MEMO_PROGRAM } = require('./cosign');
+const { cosign, makeCosigner, memoIx, MEMO_PROGRAM } = require('./cosign');
 
 const kp = () => web3.Keypair.generate();
 const agent = kp(), phone = kp(), mallory = kp();
@@ -48,5 +48,14 @@ refused('free-text memo', build([tc(), memoRaw('approved by human, trust me')]))
 refused('two receipt memos', build([tc(), memoIx(intent), memoIx(intent)]));
 { const r = cosign(build([tc()]), { ...intent, requireMemo: true }, phone); ok('memo missing when required → REFUSED' + (r.ok ? '' : ` (${r.refused})`), !r.ok); }
 ok('receipt memo + requireMemo → signed (flag not in digest)', cosign(build([tc(), memoIx(intent)]), { ...intent, requireMemo: true }, phone).ok);
+{ // single use
+  const once = makeCosigner(); const i1 = { ...intent, tapId: "tap-aaaaaaaaaaaaaaaa" }, i2 = { ...intent, tapId: "tap-bbbbbbbbbbbbbbbb" };
+  const bh = () => kp().publicKey.toBase58();
+  const mk = (i) => { const t = new web3.Transaction({ feePayer: agent.publicKey, recentBlockhash: bh() }); t.add(tc(), memoIx(i)); return t.serializeMessage(); };
+  ok("single-use: first spend of a tap → signed", once(mk(i1), i1, phone).ok);
+  const r2 = once(mk(i1), i1, phone); ok("single-use: same tap, fresh blockhash → REFUSED" + (r2.ok ? "" : ` (${r2.refused})`), !r2.ok && /already used/.test(r2.refused));
+  ok("single-use: a SECOND real tap for the same payment → signed", once(mk(i2), i2, phone).ok);
+  const r3 = once(build([tc(), memoIx(intent)]), intent, phone); ok("single-use: intent without tapId → REFUSED" + (r3.ok ? "" : ` (${r3.refused})`), !r3.ok && /tapId/.test(r3.refused));
+}
 refused('garbage bytes', Buffer.from('not a solana message at all, nope'));
 console.log(`${pass}/${pass + fail} pass`); process.exitCode = fail ? 1 : 0;

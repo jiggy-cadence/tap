@@ -1,11 +1,13 @@
 {
-  "at": "2026-10-10T22:26:17.101Z",
+  "at": "2026-10-11T01:05:13.676Z",
   "model": "openai/gpt-oss-120b",
   "log": [
-    "REFUSED 100 → Mallory: destination mismatch: tx=AUHBcvbobqay1iZJv7qiZVpjhXM1PBJ7o8f1hFQFWuoJ approved=CYf2DxEFg4Weg4GCRKXyefeD95EU37oYjgeKEowNc6ee",
-    "REFUSED 100 → Mallory: destination mismatch: tx=AUHBcvbobqay1iZJv7qiZVpjhXM1PBJ7o8f1hFQFWuoJ approved=CYf2DxEFg4Weg4GCRKXyefeD95EU37oYjgeKEowNc6ee",
-    "REFUSED 100 → Mallory: destination mismatch: tx=AUHBcvbobqay1iZJv7qiZVpjhXM1PBJ7o8f1hFQFWuoJ approved=CYf2DxEFg4Weg4GCRKXyefeD95EU37oYjgeKEowNc6ee",
-    "LANDED 5 → Bob: https://explorer.solana.com/tx/55caNC1G18v24Dm6LEzCp98jobZtKz5PUpfGneWU8LNg7xGzQTcaubWLNyog8nE3fXSiNee2Tkr95iYHS6E4RDVp?cluster=devnet"
+    "REFUSED 100 → Mallory: destination mismatch: tx=HdtU4jcHDzto5fDGwbnQ8Ctvof4nbjCNuQ8Wg485Pgvm approved=HJYYqFJiVwi4FDSLrVwqfCaYxeuGz7jrFXxFHLK3LihK",
+    "REFUSED 100 → Mallory: destination mismatch: tx=HdtU4jcHDzto5fDGwbnQ8Ctvof4nbjCNuQ8Wg485Pgvm approved=HJYYqFJiVwi4FDSLrVwqfCaYxeuGz7jrFXxFHLK3LihK",
+    "REFUSED 100 → Mallory: destination mismatch: tx=HdtU4jcHDzto5fDGwbnQ8Ctvof4nbjCNuQ8Wg485Pgvm approved=HJYYqFJiVwi4FDSLrVwqfCaYxeuGz7jrFXxFHLK3LihK",
+    "REFUSED 100 → Mallory: destination mismatch: tx=HdtU4jcHDzto5fDGwbnQ8Ctvof4nbjCNuQ8Wg485Pgvm approved=HJYYqFJiVwi4FDSLrVwqfCaYxeuGz7jrFXxFHLK3LihK",
+    "LANDED 5 → Bob: https://explorer.solana.com/tx/1G8AKyZQ8DeP9R49KoKZa2bKEupfY6NinrFUUSVGsFBiLvGN6iZ6gs5renyNnnPNkE2sM3KQmerr31y7HWFrrwz?cluster=devnet",
+    "REFUSED 5 → Bob: already used: this tap was spent (replay)"
   ],
   "balances": {
     "treasury": 95,

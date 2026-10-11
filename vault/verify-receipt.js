@@ -29,7 +29,9 @@ const { tapMemo, MEMO_PROGRAM } = require('./cosign');
   const intent = { feePayer: keys[0].toBase58(), source: d.keys.source.pubkey.toBase58(), mint: d.keys.mint.pubkey.toBase58(),
     destination: d.keys.destination.pubkey.toBase58(), multisig: d.keys.owner.pubkey.toBase58(),
     amount: String(d.data.amount), decimals: d.data.decimals };
-  const onchain = memos[0].data.toString('utf8'), recomputed = tapMemo(intent);
+  const onchain = memos[0].data.toString('utf8');
+  const tm = onchain.match(/^TAP1:([A-Za-z0-9_-]{16,64}):[0-9a-f]{64}$/); if (tm) intent.tapId = tm[1];   // single-use tap id, carried in the memo
+  const recomputed = tapMemo(intent);
   console.log('intent rebuilt from executed tx:\n' + JSON.stringify(intent, null, 2));
   console.log('memo on chain :', onchain);
   console.log('recomputed    :', recomputed);
