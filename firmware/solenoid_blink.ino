@@ -31,9 +31,10 @@
  *   fire <ms>    raw solenoid on for <ms> (max 2000) — for the meter check
  *   rate <ms>    symbol period 50..1000 (default 250)
  *   kicks [dec]  bump-link presence: play the nonce-derived 6-kick schedule
- *                (SHA-256("TAP-bump-v1:"+decimal(nonce)), gaps 200-700ms,
- *                40ms kicks). Bare `kicks` uses a fresh esp_random nonce and
- *                prints it — type the same nonce into the app's bump bench tool.
+ *                (HMAC-SHA256(K,"TAP-bump-v2:"+decimal(nonce)), gaps 200-700ms,
+ *                40ms kicks; keyed, schedule never printed). Bare `kicks`
+ *                uses a fresh esp_random nonce and prints it — type the same
+ *                nonce into the app's bump bench tool.
  *                UNBENCHED on hardware (sim parameters only).
  *   help         this list
  *
@@ -108,17 +109,10 @@ static void hmac_sha256(const uint8_t *key, size_t keylen,
   mbedtls_md_free(&ctx);
 }
 
-// one-shot SHA-256 (non-HMAC) for the bump schedule
-static void sha256_once(const uint8_t *msg, size_t msglen, uint8_t out[32]) {
-  mbedtls_md_context_t ctx;
-  const mbedtls_md_info_t *info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-  mbedtls_md_init(&ctx);
-  mbedtls_md_setup(&ctx, info, 0);
-  mbedtls_md_starts(&ctx);
-  mbedtls_md_update(&ctx, msg, msglen);
-  mbedtls_md_finish(&ctx, out);
-  mbedtls_md_free(&ctx);
-}
+// NOTE: the old one-shot sha256_once (non-HMAC) lived here. Its only consumer
+// was the unkeyed bump schedule; with the schedule keyed (HMAC) it is gone, so
+// nothing can accidentally derive an unkeyed schedule again. (Removed
+// 2026-10-11 in the keyed-bump patch.)
 
 static void drive(bool on) {
   digitalWrite(SOL_PIN, on ? HIGH : LOW);
@@ -191,20 +185,27 @@ static void freshCeremony() {
 
 // Bump-link presence (Aperture 19:05:31Z ask (b)). Plays the nonce-derived
 // 6-kick schedule from stone/bump.js, byte-identical: scheduleFromNonce =
-// SHA-256("TAP-bump-v1:" + decimal-string(nonce)), gaps 200-700 ms from
-// digest bytes [2i],[2i+1] (i=1..5), 40 ms kicks. The app (expo-ceremony
-// bump bench tool) captures the accelerometer and verifies kick times.
-// UNBENCHED on hardware — sim parameters only. Total energize 6x40 ms,
-// far under the coil duty limit.
+// HMAC-SHA256(K, "TAP-bump-v2:" + decimal-string(nonce)), gaps 200-700 ms
+// from digest bytes [2i],[2i+1] (i=1..5), 40 ms kicks. KEYED (BUMP-MATH.md
+// correction 2026-10-11): the unkeyed schedule proved liveness but added zero
+// secrecy, because the stone printed the nonce. Now forging the rhythm needs
+// the stone key, and the bump bits MULTIPLY with the magnet answer.
+// The app (expo-ceremony bump bench tool) holds K from pairing and computes
+// the same schedule. UNBENCHED on hardware — sim parameters only. Total
+// energize 6x40 ms, far under the coil duty limit.
+// The schedule itself is NEVER printed: with a keyed schedule the nonce is
+// harmless (HMAC input), but the schedule is the answer. KICKS nonce= stays
+// for the bench (typed into the app's bump bench tool).
 static void kicks(uint32_t nonce) {
+  if (key_is_weak(sessionKey, 32)) { Serial.println(F("REFUSED: weak session key, set one with key <64hex>")); return; }
   char dec[11];
   ultoa(nonce, dec, 10);
   uint8_t msg[12 + 10];
-  memcpy(msg, "TAP-bump-v1:", 12);
+  memcpy(msg, "TAP-bump-v2:", 12);
   size_t declen = strlen(dec);
   memcpy(msg + 12, dec, declen);
   uint8_t d[32];
-  sha256_once(msg, 12 + declen, d);
+  hmac_sha256(sessionKey, 32, msg, 12 + declen, d);
   unsigned long sched[6];
   unsigned long t = 0;
   for (int i = 0; i < 6; i++) {
@@ -215,10 +216,7 @@ static void kicks(uint32_t nonce) {
     sched[i] = t;
   }
   Serial.print(F("KICKS nonce="));
-  Serial.print(nonce);
-  Serial.print(F(" schedule="));
-  for (int i = 0; i < 6; i++) { Serial.print(sched[i]); if (i < 5) Serial.print(','); }
-  Serial.println();
+  Serial.println(nonce);
   unsigned long prev = 0;
   for (int i = 0; i < 6; i++) {
     delay(sched[i] - prev);
