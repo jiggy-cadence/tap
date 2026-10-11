@@ -60,9 +60,14 @@ function curve(digest) {
     const x = md(l * l - A[0] - B[0]); return [x, md(l * (A[0] - x) - A[1])]; };
   const mul = (k, A) => { let R = null, Q = A; while (k > 0) { if (k & 1) R = add(R, Q); Q = add(Q, Q); k >>= 1; } return R; };
   const order = A => { let n = 1, Q = A; while (Q) { Q = add(Q, A); n++; } return n; };
-  // generator: first point at/after x0 = digest[4..5] whose order exceeds 100 (so the walk has room)
+  // generator: first point at/after x0 = digest[4..5] whose order exceeds 100 (so the walk has room).
+  // Fallback: some (a,b) over F_1021 have every point of order ≤ 100; without a fallback G stays null and
+  // any walk (SEAL / Vow Field) crashes. Prefer ord>100; else the maximum-order non-2-torsion point.
   const x0 = ((digest[4] << 8) | digest[5]) % P; let G = null, ord = 0;
-  for (let i = 0; i < pts.length && !G; i++) { const c = pts[(pts.findIndex(q => q[0] >= x0) + i + pts.length) % pts.length]; if (c[1] === 0) continue; const o = order(c); if (o > 100) { G = c; ord = o; } }
+  const start = pts.findIndex(q => q[0] >= x0);
+  for (let i = 0; i < pts.length && !G; i++) { const c = pts[((start < 0 ? 0 : start) + i) % pts.length]; if (c[1] === 0) continue; const o = order(c); if (o > 100) { G = c; ord = o; } }
+  if (!G) { for (const c of pts) { if (c[1] === 0) continue; const o = order(c); if (o > ord) { G = c; ord = o; } } }
+  if (!G || ord < 2) throw new Error('toy curve: no generator'); // non-singular E(F_1021) always has points
   return { p: P, a, b, pts, G, ord, add, mul };
 }
 // ---------- dipoles + RK4 ----------

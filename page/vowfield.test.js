@@ -24,4 +24,37 @@ t('refuse and unanswered stay open: no closing hop, loop not closed', () => { fo
   const P = m.path.pts; assert.notDeepStrictEqual(P[P.length - 1], P[0]); } });
 t('field is inverse-cube: |B| scales 1/r^3 far from a single dipole', () => { const D = [{ x: 0, y: 0, ang: 0, m: 1 }], b = r => Math.hypot(...V.field(D, r, 0)); assert(Math.abs(b(.2) / b(.4) - 8) < 1e-2) /* 1e-5 softening */; });
 t('bad receipt refused for its named reason', () => assert.throws(() => V.model({ ...A, receipt: 'TAP1:zz' }), /receipt must be TAP1:<64 hex>/));
+// Lodestone wire 32a77e959c646c25: curve walk hit O (point at infinity) → toP(null) threw on ~2.5% of receipts.
+// Known crashing receipt from a 400-sweep repro (hop lands on P + (-P) = O). Must model + draw without throw.
+t('point-at-infinity receipt (Lodestone crash) models and draws', () => {
+  const bad = { ...A, receipt: 'TAP1:4afd01e1e868995e7ccfdcd5e03b55e808e1cb57b16c4f4779f282b1516abd7a', label: 'infinity-repro' };
+  const m = V.model(bad);
+  assert.ok(m.curve.walk.some(q => q === null), 'walk must still record O as null (honest group element)');
+  assert.ok(m.path.pts.every(q => Number.isFinite(q[0]) && Number.isFinite(q[1])));
+  assert.strictEqual(typeof draw(bad), 'string');
+  // approve still closes even when an intermediate hop was O
+  assert.deepStrictEqual(m.curve.closed, m.curve.G);
+});
+// Same Lodestone sweep class: some (a,b) over F_1021 have no point of order > 100, so curve() used to return G=null.
+// Refused outcome on this receipt hit that path. seal.js now falls back to the max-order point.
+t('small-order curve (former G=null) models for all outcomes', () => {
+  const rh = 'TAP1:e6201610e777205347e26de7db21c1acf168838048a26eb2ea5a006aca4f8a6c';
+  for (const outcome of ['approved', 'refused', 'unanswered']) {
+    const tap = { label: 'small-ord', outcome, receipt: rh, sig: outcome === 'unanswered' ? '0'.repeat(128) : A.sig };
+    const m = V.model(tap);
+    assert.ok(m.curve.G && m.curve.ord >= 2, 'generator required');
+    assert.ok(m.path.pts.every(q => Number.isFinite(q[0]) && Number.isFinite(q[1])));
+  }
+});
+t('fuzz: 10000 random receipts, 0 crashes (Lodestone ~2.5% regression)', () => {
+  let crashes = 0; const first = [];
+  for (let i = 0; i < 10000; i++) {
+    const receipt = 'TAP1:' + crypto.randomBytes(32).toString('hex');
+    const outcomes = ['approved', 'refused', 'unanswered'];
+    const tap = { label: 'fuzz-' + i, outcome: outcomes[i % 3], receipt, sig: A.sig };
+    try { const m = V.model(tap); assert.ok(m.path.pts.length > 0); }
+    catch (e) { crashes++; if (first.length < 3) first.push({ i, receipt, err: String(e.message || e) }); }
+  }
+  assert.strictEqual(crashes, 0, 'crashes=' + crashes + ' sample=' + JSON.stringify(first));
+});
 console.log(n + '/' + n + ' vowfield');

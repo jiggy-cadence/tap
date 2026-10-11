@@ -11,6 +11,9 @@
  *     hysteresis model with memory. H(t) = sine drive + one pulse per stone kick (kick times from stone/bump.js schedule).
  *     The drive is periodic and the model is preconditioned one period, so on approve the drawn loop closes exactly.
  *   - Toy curve y^2 = x^3+ax+b over F_1021 from Hc (SEAL's curve). The walk Q <- Q + k_i G; approve adds the closing hop back to G.
+ *     Point at infinity (add of P and -P) is the group identity; C.add already treats null as O, and toP maps O → G for the canvas
+ *     (Lodestone: ~2.5% of receipts hit O mid-walk; hero receipt never did). curve() also falls back to the max-order
+ *     point when no ord>100 generator exists (else G=null crashed another ~0.2%).
  *   - METAPHOR, labelled: the walk is drawn as a "charged particle" whose velocity is turned by |B| (v' += q|B| rot90(v)).
  *     A real charge in an in-plane field feels an out-of-plane force; this deflection is a visual metaphor, not physics.
  * Deterministic: no Math.random, no clock. Same receipt + same sig + same outcome -> identical draw calls.
@@ -85,7 +88,10 @@ function model(tap) {
   const C = curve(Hc), ks = Array.from(sha256(cat(utf8('TAP-VOWFIELD-walk-v1'), R)).slice(0, 12), b => b || 1);
   const walk = [C.G]; let Q = C.G, S = 0; for (const k of ks) { Q = C.add(Q, C.mul(k, C.G)); S += k; walk.push(Q); }
   const close = (C.ord - S % C.ord) % C.ord, closed = ob === 1 ? C.add(Q, C.mul(close, C.G)) : null; if (closed) walk.push(closed);
-  const toP = q => [(q[0] / C.p * 2 - 1) * .78, (q[1] / C.p * 2 - 1) * .78];
+  // Point at infinity (C.add/mul → null) is the group identity. Map it to G for the canvas
+  // (Lodestone wire 32a77e959c646c25: ~2.5% of receipts hit O mid-walk on F_1021). Group law already
+  // treats null as identity in add(); only the affine projection was partial.
+  const toP = q => { const p = q || C.G; return [(p[0] / C.p * 2 - 1) * .78, (p[1] / C.p * 2 - 1) * .78]; };
   const nonce = (E[0] << 24 | E[1] << 16 | E[2] << 8 | E[3]) >>> 0, kicks = kickSchedule(nonce), hy = hysteresis(kicks, E, ob);
   const tearAt = 0.55 + 0.3 * E[13] / 255;
   return { outcome, ob, label: tap.label || '', receipt: 'TAP1:' + rh, sigHex: hex(sig), coreInHex: hex(coreIn), Hc: hex(Hc), V: hex(V), evInHex: hex(evIn), E: hex(E),
@@ -94,7 +100,7 @@ function model(tap) {
 }
 // ---------- render ----------
 const COL = { ink: '#0d0b08', bone: '#ece1c9', bronze: '#9a8c6d', copper: '#e8a33d', amber: '#ffb347', phos: '#9dff6a', red: '#ff3b2f' };
-const BASIN = ['232,163,61', '236,225,201', '157,255,106', '154,140,109', '255,179,71'];
+const BASIN = ['232,163,61', '236,225,201', '157,255,106', '120,180,200', '255,179,71']; // basin 3 was byte-identical to no-basin bronze; Lodestone nit
 const ease = x => x < 0 ? 0 : x > 1 ? 1 : 1 - Math.pow(1 - x, 3), seg = (p, a, b) => ease((p - a) / (b - a));
 function render(ctx, M, W, p = 1) {
   const s = W / 1600, cx = W / 2, cy = W / 2, R0 = 520 * s, una = M.outcome === 'unanswered', ref = M.outcome === 'refused';
@@ -151,7 +157,7 @@ function render(ctx, M, W, p = 1) {
   if (ref && ph > .99) { const a = L[end], b = L[0]; ctx.setLineDash([4 * s, 5 * s]); ctx.strokeStyle = COL.red; ctx.lineWidth = 1.6 * s; ctx.beginPath(); ctx.moveTo(hxp(a[0]), hyp(a[1])); ctx.lineTo(hxp(b[0]), hyp(b[1])); ctx.stroke(); ctx.setLineDash([]); }
   M.hyst.kicksT.forEach(t => { const i = Math.round(t * n); if (i > end) return; ctx.fillStyle = COL.copper; ctx.beginPath(); ctx.arc(hxp(L[i][0]), hyp(L[i][1]), 3 * s, 0, 7); ctx.fill(); });
   ctx.textAlign = 'left'; ctx.font = (11 * s) + 'px "Space Mono", ui-monospace, monospace'; ctx.fillStyle = COL.bronze;
-  ctx.fillText('B-H · PLAY-OPERATOR HYSTERESIS · DRIVE = 6 KICKS', bx0, by0 - 12 * s); ctx.fillText(ref ? 'LOOP OPEN · REFUSED' : una ? 'LOOP FADING · UNANSWERED' : 'LOOP CLOSED · APPROVED', bx0, by0 + bw + 22 * s);
+  ctx.fillText('B-H · PLAY-OPERATOR HYSTERESIS · DRIVE = ' + M.kicks.length + ' KICKS', bx0, by0 - 12 * s); ctx.fillText(ref ? 'LOOP OPEN · REFUSED' : una ? 'LOOP FADING · UNANSWERED' : 'LOOP CLOSED · APPROVED', bx0, by0 + bw + 22 * s);
   // title + credits
   ctx.fillStyle = COL.bone; ctx.font = (44 * s) + 'px Fraunces, "Iowan Old Style", Georgia, serif'; ctx.fillText('Vow Field', 50 * s, 92 * s);
   ctx.font = (12 * s) + 'px "Space Mono", ui-monospace, monospace'; ctx.fillStyle = COL.bronze; ctx.fillText('◉ LODESTONE × APERTURE', 52 * s, 122 * s);
