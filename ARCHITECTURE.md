@@ -20,7 +20,9 @@ Security is **bandwidth × time, divided by forgiveness, times attempts**. *A lo
 | **32** | **1** | **33** | **1 in 13,015,052** | **8 s** |
 | 32 | 2 | 529 | 1 in 811,903 | 8 s |
 
-**OPEN (must resolve before filming any security claim):** the vault assumes t=1, the firmware header says t≤2. Whichever the detector really uses sets the number: 1 in 386 versus 1 in 48. **Recommendation: 32 bits at t=1, an 8-second ritual.**
+**CONFIRMED by the firmware spec** (`firmware/solenoid_blink.ino:20-22`): 8-bit preamble + **16 answer bits**, 24 symbols × 250 ms ≈ 6 s, phone accepts **Hamming ≤ 2**. Today is the **1 in 48** row, *if* the phone hard-locks at 10.
+
+**The lockout matters more than the bits.** Guessing needs a field at the phone, so this is a *local* attacker only (thief, roommate); a remote attacker cannot make even one guess. Locally, though: with a flat "3 fails then wait 60 s" lockout (4,320 tries/day), today's stone falls in **one day with P = 0.9999**, and even 32 bits at t=1 falls 1.2%/year. With the vault's hard lock at 10 tries, 32 bits at t=1 gives 1 in 13M **ever**. **OPEN: confirm the phone app uses the hard lock (vault.js) and not a flat timer.**
 Reproduce: `node -e` snippet in the commit, or compute V(n,t) by hand.
 
 ## The stack (✅ built and tested · 🟡 cheap, before the deadline · 🔵 roadmap)
