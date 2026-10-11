@@ -26,3 +26,7 @@ Anyone with USB access to the stone can run `esptool read_flash` to copy the fir
 - The app's lockout type is unconfirmed; must be the hard lock, persisted (item 2). Drop-in: `expo/lock-store.js`.
 - The phone co-signing key isn't specified to live in SecureStore (CRYPTO.md).
 - The Squads `Period.Day` fixed window allows up to 2× the limit around a reset (SUBMISSION-COPY, honest-limits paragraph).
+
+## 4. CLOSED ON CHAIN (2026-10-11 03:40Z, `vault/devnet-attacks.js`): replay and hoarding a phone signature
+- **Rebroadcast** of an identical phone-co-signed tx: "already processed"; Bob's balance stayed 5 (not 10). Solana dedups by signature. First tx: https://explorer.solana.com/tx/3HRgzXTxHNogzoM6NYFJ2XnfCdcKkdKPhWsjqKtAQwBRwNdKKKmPqoV3KGXUpJYh3EQAzrd69oHJcXx5gPpcopRu?cluster=devnet
+- **Hoard** (Lodestone's residual: the phone doesn't check blockhash freshness): the signature was held past `lastValidBlockHeight` and then broadcast: "Blockhash not found", no status, the balance didn't change. **The window an agent can delay a phone signature is bounded by the chain (~60–90 s)**, and indefinite hoarding is impossible because cosign refuses durable-nonce txs (cosign.test.js). Residual downgraded from open to bounded-by-design.
