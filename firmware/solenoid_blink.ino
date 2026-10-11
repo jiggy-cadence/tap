@@ -35,6 +35,13 @@
  *                40ms kicks). Bare `kicks` uses a fresh esp_random nonce and
  *                prints it — type the same nonce into the app's bump bench tool.
  *                UNBENCHED on hardware (sim parameters only).
+ *   spub         print this stone's Ed25519 public key (for pairing; public, safe to print)
+ *   ssign <194hex>  Stage 1 stone-attested approval: cluster(1B) || vault(32B) || sha256(tx msg)(32B)
+ *                || sha256(tapId)(32B), hex. Stone prints TOUCH, then needs the BOOT button PRESSED
+ *                (released at request time, pressed within 10 s). Only then: counter+1 written to NVS,
+ *                Ed25519 sig over the frozen 150-byte message (docs/STONE-SIGN-FORMAT.md), printed as
+ *                `SSIG <counter> <sig128hex> <msg300hex>` (refusals: `REFUSED TOUCH_HELD|NO_TOUCH|...`), then the magnet pattern for THAT message is pulsed.
+ *                Serial alone can never produce a signature. NOT RUN ON HARDWARE.
  *   help         this list
  *
  * KEY, DIGEST and per-bit SYM answer prints are NEVER emitted (any build).
@@ -50,6 +57,9 @@
 #include <mbedtls/md.h>
 #include "bootloader_random.h"  // SAR-ADC entropy for esp_random() with Wi-Fi/BT off (ESP-IDF RNG docs)
 #include "stone_safety.h"       // key_is_weak() + coil thermal bucket; host-tested in firmware/test/
+#include <Preferences.h>        // NVS: stone seed + monotonic counter
+#include "esp_random.h"
+#include "stone_sign.h"         // Stage 1 signing core; host-tested in firmware/test/stone_sign_test.c
 
 #define PIN_PROVISION 0         // GPIO0 = the devkit's BOOT button; must be held to re-key
 // 2026-10-10 Aperture safety pass + 2026-10-11 Lodestone serial hardening.
@@ -229,6 +239,77 @@ static void kicks(uint32_t nonce) {
   Serial.println(F("KICKS done"));
 }
 
+// ---------------- Stage 1: stone-attested approval ----------------
+// Seed lives in NVS (plaintext unless flash encryption is on: WROOM-32D key extraction is a known limit,
+// see GAPS H4). It is NEVER printed. Counter is written to NVS BEFORE the signature exists.
+Preferences stonePrefs;
+stone_state stone;
+const unsigned long TOUCH_WINDOW_MS = 10000;
+
+static int stonePersist(uint64_t next, void *ctx) {
+  (void)ctx;
+  if (stonePrefs.putULong64("ctr", next) != 8) return -1;
+  return stonePrefs.getULong64("ctr", 0) == next ? 0 : -1;   // read back: only a committed write counts
+}
+
+static void stoneInit() {
+  stonePrefs.begin("tapstone", false);
+  uint8_t seed[32];
+  if (stonePrefs.getBytes("seed", seed, 32) != 32) {
+    esp_fill_random(seed, 32);                 // bootloader_random_enable() already on (setup)
+    stonePrefs.putBytes("seed", seed, 32);
+    Serial.println(F("STONE new key generated"));
+  }
+  if (stone_key_from_seed(&stone, seed) != STONE_OK) Serial.println(F("STONE ERR: weak seed, signing disabled"));
+  memset(seed, 0, sizeof seed);
+  stone.counter = stonePrefs.getULong64("ctr", 0);
+}
+
+// Physical touch: BOOT must be UP when the request arrives (a taped-down button never counts),
+// then go DOWN within the window.
+// Returns 1 touched, 0 no touch in window, -1 button already held at request (TOUCH_HELD, Lodestone 06:22Z).
+static int waitForTouch() {
+  if (digitalRead(PIN_PROVISION) == LOW) return -1;
+  Serial.println(F("TOUCH: press the stone (BOOT) within 10 s"));
+  unsigned long t0 = millis();
+  while (millis() - t0 < TOUCH_WINDOW_MS) {
+    if (digitalRead(PIN_PROVISION) == LOW) { delay(30); if (digitalRead(PIN_PROVISION) == LOW) return 1; }
+    delay(5);
+  }
+  return 0;
+}
+
+static const char *stoneCodeName(int rc) {
+  switch (rc) {
+    case STONE_NO_TOUCH: return "NO_TOUCH"; case STONE_PERSIST_FAIL: return "PERSIST_FAIL";
+    case STONE_NO_KEY: return "NO_KEY"; case STONE_BAD_CLUSTER: return "BAD_CLUSTER";
+    case STONE_BAD_INPUT: return "BAD_INPUT"; case STONE_COUNTER_EXHAUSTED: return "COUNTER_EXHAUSTED";
+    default: return "UNKNOWN";
+  }
+}
+
+static void pulsePattern(uint16_t bits) {
+  coilHot = false;
+  unsigned long t = millis();
+  for (int i = 7; i >= 0; i--) { sendBit((0xAA >> i) & 1, t); if (coilHot) { drive(false); Serial.println(F("PATTERN aborted")); return; } }
+  for (int b = 0; b < 16; b++) { sendBit((bits >> b) & 1, t); if (coilHot) { drive(false); Serial.println(F("PATTERN aborted")); return; } }
+  Serial.println(F("PATTERN end"));
+}
+
+static void stoneSign(const uint8_t *req) {   // req = 97 bytes
+  if (key_is_weak(sessionKey, 32)) { Serial.println(F("REFUSED: weak session key (pattern needs K_pair)")); return; }
+  int touch = waitForTouch();
+  if (touch < 0) { Serial.println(F("REFUSED TOUCH_HELD: release the BOOT button, then press it after TOUCH")); return; }
+  uint8_t sig[STONE_SIG_LEN], msg[STONE_MSG_LEN]; uint64_t ctr = 0;
+  int rc = stone_sign_request(&stone, req[0], req + 1, req + 33, req + 65, touch, stonePersist, NULL, sig, msg, &ctr);
+  if (rc != STONE_OK) { Serial.print(F("REFUSED ")); Serial.println(stoneCodeName(rc)); return; }
+  // Everything printed here is public: counter, signature, and the 150 signed bytes (phone compares them).
+  Serial.print(F("SSIG ")); Serial.print((unsigned long long)ctr); Serial.print(' ');
+  for (size_t i = 0; i < STONE_SIG_LEN; i++) { if (sig[i] < 0x10) Serial.print('0'); Serial.print(sig[i], HEX); }
+  Serial.print(' '); printHex(msg, STONE_MSG_LEN);
+  pulsePattern(stone_mag_bits(sessionKey, 32, msg));
+}
+
 static int hexNib(char c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'a' && c <= 'f') return c - 'a' + 10;
@@ -291,8 +372,14 @@ static void handleCommand(String cmd) {
       Serial.print(symbolMs);
       Serial.println(F("ms"));
     } else Serial.println(F("ERR: 50..1000"));
+  } else if (cmd == "spub") {
+    if (!stone.has_key) Serial.println(F("STONE ERR: no key")); else { Serial.print(F("SPUB ")); printHex(stone.pk, 32); }
+  } else if (cmd.startsWith("ssign ")) {
+    uint8_t req[97];
+    if (!parseHex(cmd.substring(6), req, 97)) Serial.println(F("ERR: need 194 hex chars"));
+    else stoneSign(req);
   } else if (cmd == "help" || cmd == "?") {
-    Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | help"));
+    Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | spub | ssign <194hex> | help"));
   } else if (cmd.length()) {
     Serial.println(F("ERR: unknown, try help"));
   }
@@ -307,10 +394,11 @@ void setup() {
   therm_init(&coil, (uint32_t)millis());
   Serial.begin(115200);
   delay(500);
-  Serial.println(F("\nTAP knot-stone solenoid blink v1"));
+  Serial.println(F("\nTAP knot-stone solenoid blink v1 + stone-sign v1"));
+  stoneInit();
   if (key_is_weak(sessionKey, 32)) Serial.println(F("WARN: boot key is weak; ceremonies refused until `key <64hex>`"));
   else if (sessionKey[0] == 0x01 && sessionKey[31] == 0x20) Serial.println(F("NOTE: DEMO key 01..20 loaded; rotate with `key <64hex>` per Fair run"));
-  Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | help"));
+  Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | spub | ssign <194hex> | help"));
 }
 
 void loop() {

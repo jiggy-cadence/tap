@@ -14,6 +14,12 @@
 
 const { makeCosigner } = require('../vault/cosign');
 const { checkPriorityFee, DEFAULT_MAX_PRIORITY_LAMPORTS } = require('./fee-guard');
+const { checkStoneEvidence, stoneCounterKey } = require('./stone-gate');
+
+// Stage 1 stone-attested approval (docs/STONE-SIGN-FORMAT.md). The pairing is read from the PHONE's own
+// storage, never from the caller: once a stone is paired, every co-sign needs that stone's signature
+// for these exact bytes. No pairing = pre-Stage-1 behaviour, reported as stoneAttested:false.
+const STONE_PAIRING_KEY = 'tap.stonePairing.v1';
 
 // Spent taps survive app restarts: an in-memory used-set resets on restart = replay after restart (Cadence 01:05Z).
 const USED_KEY = 'tap.usedTaps.v1';
@@ -58,6 +64,9 @@ function namedReason(refused) {
  * @param {object} opts.usedStorage — persistent backend (AsyncStorage) for the spent-tap set
  * @param {number} [opts.maxPriorityLamports] — cap on the ComputeBudget priority fee (default 100000)
  * @param {object} [opts.agentIntent] — if present, ALWAYS refused (named)
+ * @param {object} [opts.stoneEvidence] — UNTRUSTED stone reply { stonePubkey, cluster, txHash, tapIdHash, counter, sig, magMeasured }
+ * @param {string} [opts.activeCluster] — the network the PHONE is on ('devnet' | 'mainnet-beta' | 'testnet')
+ * @param {object} [opts.stoneWindow] — { promptedAt, receivedAt } stamped by the phone
  */
 async function cosignWithStoredIntent(opts) {
   const { msgBytes, phoneKeypair, store, agentIntent, usedStorage } = opts || {};
@@ -94,10 +103,26 @@ async function cosignWithStoredIntent(opts) {
   let used;
   try { used = await loadUsed(usedStorage); }
   catch (e) { return { ok: false, code: 'CORRUPT_USED_STORE', reason: 'spent-tap list unreadable; refusing rather than risk a replay' }; }
+  // Stone gate (phone-enforced). Runs before the phone signs anything.
+  let pairing = null, stone = null;
+  try { const raw = await usedStorage.getItem(STONE_PAIRING_KEY); pairing = raw ? JSON.parse(raw) : null; }
+  catch (e) { return { ok: false, code: 'CORRUPT_STONE_PAIRING', reason: 'stone pairing unreadable; refusing rather than skip the stone', storedIntent: got.intent }; }
+  if (pairing) {
+    let lastCounter;
+    try { lastCounter = (await usedStorage.getItem(stoneCounterKey(pairing.stonePubkey))) || '0'; }
+    catch (e) { return { ok: false, code: 'CORRUPT_STONE_COUNTER', reason: 'stone counter unreadable', storedIntent: got.intent }; }
+    stone = checkStoneEvidence({ pairing, evidence: opts.stoneEvidence, msgBytes, tapId: got.intent.tapId,
+      vault: got.intent.multisig, activeCluster: opts.activeCluster, lastCounter, window: opts.stoneWindow });
+    if (!stone.ok) return { ok: false, code: stone.code, reason: stone.reason, storedIntent: got.intent };
+  }
+
   const r = makeCosigner(used)(msgBytes, got.intent, phoneKeypair);
   if (r.ok) {
-    // Persist the spend BEFORE releasing the signature. If the write fails, the signature never leaves.
-    try { await usedStorage.setItem(USED_KEY, JSON.stringify([...used])); }
+    // Persist the spend (and the stone counter) BEFORE releasing the signature. If a write fails, the signature never leaves.
+    try {
+      await usedStorage.setItem(USED_KEY, JSON.stringify([...used]));
+      if (stone) await usedStorage.setItem(stoneCounterKey(pairing.stonePubkey), stone.counter);
+    }
     catch (e) { return { ok: false, code: 'REFUSED_PERSIST_FAILED', reason: 'could not record this tap as spent; not signing', storedIntent: got.intent }; }
   }
   if (!r.ok) {
@@ -113,8 +138,10 @@ async function cosignWithStoredIntent(opts) {
     signature: r.signature,
     parsed: r.parsed,
     storedIntent: got.intent,
+    stoneAttested: !!stone,
+    stoneCounter: stone ? stone.counter : undefined,
     code: 'SIGNED',
   };
 }
 
-module.exports = { cosignWithStoredIntent, namedReason, USED_KEY };
+module.exports = { cosignWithStoredIntent, namedReason, USED_KEY, STONE_PAIRING_KEY };

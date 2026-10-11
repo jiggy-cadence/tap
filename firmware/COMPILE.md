@@ -18,3 +18,10 @@ Note: `firmware/` holds two `.ino` files with their own `setup()`; arduino-cli t
 - Hamming tolerance pinned to **≤1** in the header (matches vault). Film **1 in 386**, not 1 in 48.
 - Ceremony touch-byte HMAC binding (`"mag"||C||0x01`) is Lodestone's separate protocol change — not in this sketch until the app expects it.
 - Source fixed; **not yet compiled/flashed on hardware** — Jiggy's flash confirms (a) no KEY line (b) key without BOOT → REFUSED.
+
+## Stage 1 stone signing (2026-10-11, Aperture; format in docs/STONE-SIGN-FORMAT.md)
+`solenoid_blink.ino` now also needs `stone_sign.h`, `stone_sign.c` and `tweetnacl_impl.h` beside it (copy all five files into a `solenoid_blink/` folder).
+arduino-cli 1.5.1, `esp32:esp32@3.3.12`, FQBN `esp32:esp32:esp32`: **compiles**, 306,676 B flash (23%), 22,332 B RAM (6%).
+New commands: `spub` (prints the public key) and `ssign <194hex>` (BOOT press required, then `SSIG <ctr> <sig> <msg>` + pattern). The key is generated on first boot into NVS namespace `tapstone`.
+Host tests: `firmware/test/run.sh` now runs stone_safety (17) + stone_sign (33) and diffs `stone_vectors.json`.
+**Compiled, NOT run on hardware.** Ed25519 timing and stack depth on the stone are UNMEASURED.

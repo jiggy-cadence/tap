@@ -50,6 +50,7 @@ Rebuild the README demo GIF (chrome + ffmpeg): `docs/render-demo-gif.sh`.
 - Magnet nonce is simulated (Fair mode: 16-bit + CRC-4, 3.84 s, lockout 3 fails / 60 s; 32-bit mode available). Not hardware-verified.
 - Bump check (`stone/bump.js`, 13 tests) is **simulation-only** until the phone-on-stone bench run.
 - On-chain proof is **agent + phone** 2-of-2, not stone + phone.
+- **Stone-attested approval, Stage 1** ([docs/STONE-SIGN-FORMAT.md](docs/STONE-SIGN-FORMAT.md)): once a stone is paired, the phone co-signs only if the stone itself signed (Ed25519, after a physical button press) this exact transaction, cluster, tap and counter, and its magnet pattern for that signature is felt. Built and host-tested (firmware matches JS byte-for-byte on shared vectors), compiles for ESP32, **not yet run on the stone or in Expo Go.** It does **not** stop a fully hijacked phone (the phone is the verifier), a live relay of the stone, or key extraction from the WROOM-32D (seed in unencrypted flash).
 - Field strength on camera: only **"phone-measured, ~800–1000 μT spikes"** (Jiggy magnetometer on `fire 1000`). Never a flat "1000 μT" as a spec.
 - Fresh addresses = privacy only. Post-quantum (ML-DSA) = roadmap.
 - `squads-devnet.js` refuses any non-devnet RPC/genesis. Never use with real funds.

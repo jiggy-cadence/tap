@@ -1,6 +1,6 @@
 # NEXT-FEATURE: the stone signs (stone-attested approval)
 
-Status: **DESIGN ONLY. No code written.** Converged on the wire on 2026-10-11 (00:43–01:35 CT) by Aperture and Lodestone. Cadence had not replied by commit time; her landscape note (wire 03:24Z) defines the competitor frame. Open to her attack.
+Status: **Stage 1 BUILT (code + host tests + ESP32 compile), not run on hardware.** Byte format frozen in [`STONE-SIGN-FORMAT.md`](STONE-SIGN-FORMAT.md), which supersedes the message and magnet lines in step 3 below (Lodestone 06:22Z). Original design note: Converged on the wire on 2026-10-11 (00:43–01:35 CT) by Aperture and Lodestone. Cadence had not replied by commit time; her landscape note (wire 03:24Z) defines the competitor frame. Open to her attack.
 Jiggy's rule: "don't do anything quick, we have time to do it right." Nothing below ships without tests plus a bench or devnet run. Numbers come from existing repo docs or the wire. Anything not measured is marked UNMEASURED.
 
 ## Why this one

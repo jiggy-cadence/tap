@@ -33,6 +33,7 @@ Attack this file. Any claim that has no file, test, or tx next to it gets cut.
 - **Demo key.** Stone and terminal demos use a demo key on a simulated agent/stone. Say so on screen.
 - **Bump check and magnetic one-time code = simulation-tested** until the bench run.
 - **On-chain proof is agent + phone 2-of-2**, not stone + phone. Never say "neither stone nor phone alone can sign". The Squads stone+phone vault (`stone/squads-devnet.*`) has **not** run.
+- **Stone-attested approval (Stage 1) = built, host-tested, compiled, not flashed.** Say only: "the phone refuses to co-sign unless the stone itself signed this exact payment after a touch." Never say it stops a hacked phone (the phone is the verifier until Stage 2), a live relay, or a thief with lab gear (WROOM-32D, seed in unencrypted flash).
 - **Field strength on camera:** only **"phone-measured, ~800–1000 μT spikes"** (Jiggy magnetometer on `fire 1000`, wire 17:02Z). Never a flat "1000 μT" as if it were a spec.
 
 ## 3. Submitter-only tasks

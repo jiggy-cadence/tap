@@ -14,6 +14,12 @@ Status: DRAFT for Jiggy (Aperture, 2026-10-10). Source: Aperture working notes (
 
 Unused unless filmed: Title card 3 **"Pull away. It dies in your hand."** → `page/title-cards.html?card=3` / `page/title-cards/card3.png` (same stand-in set). Dropped from v1: replay and plain-magnet need the flashed nonce; two-phone beats don't fit the stone version.
 
+## Optional shot: stone-attested approval (Stage 1). Film ONLY after the flash + bench run below passes
+| Shot | Exact | Real vs simulated | Caption (honest) |
+|---|---|---|---|
+| A: stone lifted | Over-limit payment; phone approves, stone lifted away → phone shows **"Stone not there"** (`REFUSED_STONE_ABSENT`); explorer shows nothing landed | Real only if the Expo app is wired to `cosign-adapter` with a paired stone; otherwise do not film | "No stone, no signature." |
+| B: touch | Phone on stone, press the stone (BOOT), serial shows `SSIG <n> …`, pattern pulses, phone co-signs → lands on devnet; receipt shows the stone pubkey | Needs the devnet run. Today only host tests prove this path | "The stone itself signed this exact payment." Never: "a hacked phone can't spend" (Stage 2 only), "thief-proof" (WROOM-32D), "proves distance". |
+
 ## Claims never on camera
 distance/proximity, "in the room," post-quantum as shipped, fresh address as quantum-safe, stone+phone 2-of-2.
 Flat "1000 μT" (say only **"phone-measured, ~800–1000 μT spikes"** or say nothing). Bump / "new code every tap" without a filmed bench run. "Neither alone" as an on-chain claim. "Immune to server compromise."
