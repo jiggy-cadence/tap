@@ -1,0 +1,12 @@
+'use strict';
+const assert = require('assert'); const { seal, open } = require('./keybox');
+let n = 0; const t = (name, fn) => { fn(); n++; console.log('PASS', name); };
+const KEY = 'sk-test-THIS-IS-A-FAKE-KEY-0123456789';
+const { box, shares } = seal(KEY);
+t('any two of three shares open the box', () => { for (const [a, b] of [[0, 1], [0, 2], [1, 2]]) assert.equal(open(box, [shares[a], shares[b]]), KEY); });
+t('the box never contains the key in clear', () => assert(!JSON.stringify(box).includes(KEY.slice(6))));
+t('one share twice is REFUSED (need two DIFFERENT shares)', () => assert.throws(() => open(box, [shares[0], shares[0]]), /DIFFERENT/));
+t('shares from another box do not open this one (named refusal)', () => { const other = seal('sk-other-key-xxxxxxxx'); assert.throws(() => open(box, [other.shares[0], other.shares[1]]), /do not open/); });
+t('a tampered box is REFUSED by the GCM tag', () => { const bad = { ...box, ct: (box.ct[0] === 'a' ? 'b' : 'a') + box.ct.slice(1) }; assert.throws(() => open(bad, [shares[0], shares[1]]), /do not open/); });
+t('a single share alone is just random bytes (no key prefix leaks)', () => assert(!shares.some(s => s.y.includes(Buffer.from(KEY).toString('hex').slice(0, 12)))));
+console.log(`${n}/${n} pass`);

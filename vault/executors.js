@@ -2,10 +2,12 @@
 // Solana: DEVNET only for the Fair demo. OpenRouter: real API, cost read back from usage.
 'use strict';
 async function openrouter(intent, S) {
-  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  // any OpenAI-compatible endpoint; the base comes from the vault's secrets, never from the agent's intent
+  const base = S.llmBase || 'https://openrouter.ai/api/v1', isOR = /openrouter\.ai/.test(base);
+  const r = await fetch(base + '/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${S.openrouterKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: intent.model, messages: intent.messages, max_tokens: intent.max_tokens, usage: { include: true } }),
+    body: JSON.stringify({ model: intent.model, messages: intent.messages, max_tokens: intent.max_tokens, ...(isOR ? { usage: { include: true } } : {}) }),
   });
   if (!r.ok) throw new Error(`openrouter ${r.status}`);
   const j = await r.json();
