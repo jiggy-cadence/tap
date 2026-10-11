@@ -83,7 +83,7 @@ Honest limits of the bump link:
 
 ## Don't trust us: verify a tap yourself
 
-Every approved transfer carries a **tap receipt** in its memo: `TAP1:` + SHA-256(`"TAP1|"` + canonical JSON of the approved intent). The phone co-signs only if the memo is exactly the receipt for the intent it stored. A forged, free-text, duplicate or (when required) missing memo is refused (`vault/cosign.test.js`).
+Every approved transfer carries a **tap receipt** in its memo: `TAP1:<tapId>:` + SHA-256(`"TAP1|"` + canonical JSON of the approved intent, including its single-use `tapId`). Each tap can be spent once; a replay is refused. Older receipts without a tapId (`TAP1:<hash>`) still verify. Crypto, privacy and threat model: [`CRYPTO.md`](CRYPTO.md). The phone co-signs only if the memo is exactly the receipt for the intent it stored. A forged, free-text, duplicate or (when required) missing memo is refused (`vault/cosign.test.js`).
 
 ```
 cd vault && npm install
