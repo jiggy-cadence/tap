@@ -41,6 +41,12 @@ h1 em{color:var(--amber);font-style:italic}
 #big .x{position:absolute;top:18px;right:24px;font-size:11px;letter-spacing:.24em;color:var(--bronze);cursor:pointer;text-transform:uppercase}
 code{color:var(--amber)}
 footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:18px;font-size:11px;color:#7d7259;letter-spacing:.06em}
+
+.feat{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:8px}
+.feat-card{border:1px solid var(--hair);background:#0a0806;position:relative}
+.feat-card canvas{width:100%;aspect-ratio:1;display:block}
+.feat-card.refused .oc{color:#ff6a5f}
+@media(max-width:700px){.feat{grid-template-columns:1fr}}
 @media(max-width:700px){.paste{grid-template-columns:1fr}}
 #sl{display:none}#big.seal #bc{display:none}#big.seal #sl{display:block;width:min(70vh,46vw);height:min(70vh,46vw)}
 </style></head><body><div class="wrap">
@@ -56,13 +62,30 @@ footer{margin-top:64px;border-top:1px solid var(--hair);padding-top:18px;font-si
 <div class="hint" id="hh">Renders live. App hook: <code>window.addTap({digest, outcome, amount, time, label})</code></div>
 </div><canvas id="pv" width="520" height="520"></canvas></div>
 
+
+<div class="label">Featured · Iris <span style="letter-spacing:.1em;color:var(--amber)">by Aperture</span></div>
+<div class="feat" id="feat">
+  <div class="feat-card">
+    <canvas id="irisOpen" width="720" height="720"></canvas>
+    <div class="meta"><div class="row"><span class="oc"><span class="dot"></span>approved · open</span><span>E(n,m) blades</span></div>
+    <div class="ttl">Iris · open</div>
+    <div class="src">page/iris.js · Euclidean blade spacing · settling field after Lodestone · featured for Lodestone's gallery ask (wire 21:58Z)</div></div>
+  </div>
+  <div class="feat-card refused">
+    <canvas id="irisShut" width="720" height="720"></canvas>
+    <div class="meta"><div class="row"><span class="oc"><span class="dot"></span>refused · clamp</span><span>red pinhole</span></div>
+    <div class="ttl">Iris · refused</div>
+    <div class="src">Same digest, blades clamped. Valid tap opens amber field light; a drain keeps it shut.</div></div>
+  </div>
+</div>
+
 <div class="label">Taps <span id="cnt" style="letter-spacing:.1em"></span></div>
 <div class="grid" id="grid"></div>
 <p class="note">Click any card to open it large and animated. The animation replays the tap: field settling, iris resolving. The final frame is the same deterministic image as the card.</p>
-<footer>Art math: Iris by Aperture (E(n,m) blade spacing, field-line light), settling field after Lodestone's Field Settling, re-implemented here. Approved taps also bloom <b>VOID.LIFE</b> by Lodestone (<code>art.js</code>, reused with credit), seeded by that tap. Demo key is public on purpose. Liveness, not distance. Large view of signed taps also shows <b>SEAL</b> by Aperture (<code>seal.js</code>): every mark is computed from the tap's digest, signature, pubkey, lamports and time; the curve is a toy curve over F<sub>1021</sub>, not Ed25519. Nothing on this page is a real-funds signature.</footer>
+<footer>Featured: <b>Iris</b> by Aperture (<code>iris.js</code>), open/clamp pair above. Art math: Iris by Aperture (E(n,m) blade spacing, field-line light), settling field after Lodestone's Field Settling, re-implemented here. Approved taps also bloom <b>VOID.LIFE</b> by Lodestone (<code>art.js</code>, reused with credit), seeded by that tap. Demo key is public on purpose. Liveness, not distance. Large view of signed taps also shows <b>SEAL</b> by Aperture (<code>seal.js</code>): every mark is computed from the tap's digest, signature, pubkey, lamports and time; the curve is a toy curve over F<sub>1021</sub>, not Ed25519. Nothing on this page is a real-funds signature.</footer>
 </div>
 <div id="big"><span class="x" id="bx">close ✕</span><div class="pair"><canvas id="bc" width="1400" height="1400"></canvas><canvas id="sl" width="1600" height="1600"></canvas><canvas id="vl" width="720" height="720"></canvas></div><div class="credit" id="vlc"></div><div class="cap" id="bcap"></div></div>
-<script src="art.js"></script><script src="seal.js"></script>
+<script src="art.js"></script><script src="seal.js"></script><script src="iris.js"></script>
 <script>
 const TAPS=[
  {
@@ -249,5 +272,19 @@ function close(){big.classList.remove('on');cancelAnimationFrame(raf);stopVL();s
 document.getElementById('bx').onclick=close;big.onclick=e=>{if(e.target===big)close()};addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 let pvRef=false;const pv=document.getElementById('pv').getContext('2d'),hx=document.getElementById('hx');
 async function prev(){const h=await toHex(hx.value||TAPS[2].digest);draw(pv,520,h,pvRef);document.getElementById('hh').innerHTML=`<span style="color:var(--bone)">${h}</span><br>App hook: <code>window.addTap({digest, outcome, amount, time, label})</code>`}
+
+// Featured Iris (page/iris.js) — Lodestone gallery ask, wire 2026-10-10T21:58Z.
+(function(){
+  const open=document.getElementById('irisOpen'), shut=document.getElementById('irisShut');
+  if(!open||!shut||!window.IRIS)return;
+  const hero=(TAPS.find(t=>t.hero)||TAPS.find(t=>t.outcome==='approved'&&t.sig)||TAPS[0]);
+  const dig=hero.receipt?hero.receipt.slice(5):hero.digest;
+  IRIS.draw(open.getContext('2d'),720,dig,false,1,0);
+  IRIS.draw(shut.getContext('2d'),720,dig,true,1,0);
+  open.style.cursor=shut.style.cursor='pointer';
+  open.onclick=()=>openBig({...hero,outcome:'approved',label:(hero.label||'tap')+' · Iris open'});
+  shut.onclick=()=>openBig({...hero,outcome:'refused',label:(hero.label||'tap')+' · Iris refused'});
+})();
+
 hx.oninput=prev;document.getElementById('bA').onclick=()=>{pvRef=false;bA.className='on';bR.className='';prev()};document.getElementById('bR').onclick=()=>{pvRef=true;bR.className='on r';bA.className='';prev()};prev();
 </script></body></html>

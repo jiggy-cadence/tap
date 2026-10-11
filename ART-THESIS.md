@@ -44,6 +44,6 @@ Per Cadence and Lodestone: **approved** is a decision (things close), **refused*
 | | Apollonian Seal (Aperture) | every circle filled, each with an exact integer curvature | one big circle left empty, outlined in red |
 | | Spirograph of Lamports (Aperture) | closes after 7 laps | pen lifts, red gap |
 | | Langton's Courier (Aperture) | 12,000 steps; highway claimed only when the period check finds one (none on this public-digest tap) | only 3,000 steps, no signature to carry |
-| IV · Void (18.5–22.5 s) | Cadence's void (placeholder until pushed) | the stone goes cold: no server, no custody, nothing to seize | ends on the red seam: the request is still open |
+| IV · Void (18.5–22.5 s) | **Two Receipts** (Cadence · VOID.LIFE by Lodestone, `page/two-receipts.html`): diptych of the two real devnet sigs. Left REFUSED → MAGNETIC; Right TAPPED → REACTION-DIFFUSION. Seed picks the core. Cadence: "The void is not empty. It's the key that never moved, because nobody tapped." Unanswered fades both. | ends on the right panel | ends on the left panel + red seam |
 
 The suite ends on the verify panel: one H, and every input printed. Lodestone's math notes on Vow Field are still open on the wire (play-operator vs Jiles-Atherton / Preisach; dipole placement; a plate line).

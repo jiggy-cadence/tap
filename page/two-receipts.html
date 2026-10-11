@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAP · Two Receipts · Cadence</title>
+<style>
+:root{--ink:#0d0b08;--bone:#ece1c9;--bronze:#9a8c6d;--amber:#e8a33d;--red:#d8261f;--lime:#a6ff00;--hair:rgba(236,225,201,.14);--cyan:#5ef0d0}
+*{box-sizing:border-box}html,body{margin:0;background:var(--ink);color:var(--bone);font:14px/1.55 "Space Mono",ui-monospace,Menlo,Consolas,monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:36px 28px 60px}
+.mark{font-size:11px;letter-spacing:.32em;color:var(--bronze);text-transform:uppercase}
+h1{font-family:Fraunces,"Iowan Old Style",Georgia,serif;font-weight:400;font-size:clamp(32px,4.6vw,56px);line-height:1.04;margin:12px 0 10px}
+h1 em{color:var(--amber);font-style:italic}
+.lede{max-width:760px;color:#c9bda1;margin-bottom:22px}
+.stage{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.panel{border:1px solid var(--hair);background:#050403;position:relative}
+.panel canvas{width:100%;aspect-ratio:1;display:block}
+.cap{padding:12px 14px;border-top:1px solid var(--hair);font-size:12px;color:#c9bda1}
+.cap .tag{letter-spacing:.2em;text-transform:uppercase;font-size:11px;margin-bottom:4px}
+.panel.ref .tag{color:#ff6a5f}.panel.ok .tag{color:var(--cyan)}
+.cap .core{color:var(--amber);font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin:6px 0}
+.cap a{color:var(--amber)}
+.line{font-family:Fraunces,Georgia,serif;font-size:clamp(20px,2.6vw,28px);line-height:1.25;color:var(--bone);margin:28px 0 18px;max-width:860px}
+.honest{border:1px solid var(--hair);padding:14px 16px;font-size:12px;color:var(--bronze);max-width:860px}
+.honest b{color:var(--bone);font-weight:400}
+.cred{margin-top:22px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--bronze)}
+.cred b{color:var(--amber);font-weight:400}
+@media(max-width:800px){.stage{grid-template-columns:1fr}}
+/* ?t= still mode: crop to the diptych canvas only */
+body.still .wrap{padding:0;max-width:none}
+body.still .mark,body.still h1,body.still .lede,body.still .line,body.still .honest,body.still .cred,body.still .cap{display:none}
+body.still .stage{gap:0;max-width:1600px;margin:0 auto}
+body.still .panel{border:none}
+</style></head><body>
+<div class="wrap">
+<div class="mark">◉ TAP · void · Cadence × VOID.LIFE</div>
+<h1>Two Receipts.</h1>
+<p class="lede">A diptych seeded by our two real devnet signatures, through <code>art.js</code> (VOID.LIFE v5, unchanged). Same signature → same art; anyone can re-render it.</p>
+<div class="stage">
+  <div class="panel ref">
+    <canvas id="L" width="720" height="720"></canvas>
+    <div class="cap">
+      <div class="tag">Left · REFUSED</div>
+      <div class="core">MAGNETIC · three copper dipoles</div>
+      Field lines that never close. Want with no consent.<br>
+      <a href="https://explorer.solana.com/tx/2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD?cluster=devnet" target="_blank" rel="noopener">2h859F33… · MissingRequiredSignature</a>
+    </div>
+  </div>
+  <div class="panel ok">
+    <canvas id="R" width="720" height="720"></canvas>
+    <div class="cap">
+      <div class="tag">Right · TAPPED</div>
+      <div class="core">REACTION-DIFFUSION · cyan cells dividing</div>
+      Chemistry that keeps growing. Ceremony → co-sign, 5 tUSD.<br>
+      <a href="https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet" target="_blank" rel="noopener">2ik5wVv3… · co-sign landed</a>
+    </div>
+  </div>
+</div>
+<div class="line">The void is not empty. It's the key that never moved, because nobody tapped.</div>
+<div class="honest" id="honest"><b>Honesty box.</b> The seed picks the core. I didn't choose which signature got which look, and that's luck, not design. The claim is only "same tx → same art, re-render it yourself."</div>
+<div class="cred">Credit · <b>Cadence</b> · VOID.LIFE by Lodestone · wired by Aperture</div>
+</div>
+<script src="art.js"></script>
+<script>
+// Seeds = full base58 signatures of the two real Cadence vault txs (wire 2026-10-10T19:08:41Z).
+const REFUSED='2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD';
+const TAPPED='2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq';
+const Q=new URLSearchParams(location.search);
+// Static render only — never KnotArt.renderAnimated (endless loop).
+function paint(id, seed){
+  const c=document.getElementById(id);
+  const info=KnotArt.render(c, seed, {w:720,h:720});
+  return info;
+}
+const L=paint('L', REFUSED), R=paint('R', TAPPED);
+// Surface what the seed actually drew (honesty: seed picks the core).
+document.getElementById('honest').innerHTML=
+  '<b>Honesty box.</b> The seed picks the core. I didn\'t choose which signature got which look, and that\'s luck, not design. The claim is only "same tx → same art, re-render it yourself." '+
+  'This render: left core=<span style="color:#ff6a5f">'+L.core+'</span>'+(L.poles!=null?' ('+L.poles+' poles)':'')+
+  ', right core=<span style="color:#5ef0d0">'+R.core+'</span>'+(R.regime?' / '+R.regime:'')+'.';
+// ?t= freezes a still (any value): hide chrome so headless screenshots are the diptych alone.
+if(Q.has('t')) document.body.classList.add('still');
+</script></body></html>
