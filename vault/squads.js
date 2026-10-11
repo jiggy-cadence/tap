@@ -80,6 +80,19 @@ async function squads_vault_transfer(intent, S, pol, conn) {
   if (decoded.to !== to.toBase58() || decoded.lamports !== intent.lamports)
     throw new Error(`squads_vault_transfer: intent mismatch: on-chain proposal is ${decoded.lamports} lamports to ${decoded.to}, approved intent is ${intent.lamports} to ${intent.to}`);
 
+  // 2b. the phone's vote must actually be needed on chain, or "neither alone" is decoration (Aperture pass 2026-10-11):
+  //    no config authority (it could rewrite members/threshold alone), phone is a voting member, and every OTHER
+  //    voter together stays below threshold. This vault cannot know who controls the other keys, so it assumes the worst.
+  const msInfo = await conn.getAccountInfo(multisigPda, 'confirmed');
+  if (!msInfo) throw new Error('squads_vault_transfer: no Squads multisig at pol.multisig');
+  if (!msInfo.owner.equals(multisig.PROGRAM_ID)) throw new Error('squads_vault_transfer: multisig account is not owned by the Squads program');
+  if (!Buffer.from(msInfo.data.subarray(0, 8)).equals(Buffer.from(multisig.generated.multisigDiscriminator))) throw new Error('squads_vault_transfer: pol.multisig is not a Squads Multisig account');
+  const [ms] = multisig.accounts.Multisig.fromAccountInfo(msInfo);
+  if (!ms.configAuthority.equals(web3.PublicKey.default)) throw new Error('squads_vault_transfer: multisig has a configAuthority (it can change members or threshold without the phone)');
+  const voters = ms.members.filter(mb => multisig.types.Permissions.has(mb.permissions, multisig.types.Permission.Vote));
+  if (!voters.some(mb => mb.key.equals(phone.publicKey))) throw new Error('squads_vault_transfer: phone is not a voting member of this multisig');
+  if (voters.length - 1 >= ms.threshold) throw new Error(`squads_vault_transfer: the phone's vote is not required (threshold ${ms.threshold}, ${voters.length - 1} other voters)`);
+
   // 3. phone approves THIS proposal, and only this one
   const tx = new web3.Transaction();
   tx.add(multisig.instructions.proposalApprove({ multisigPda, transactionIndex: index, member: phone.publicKey }));

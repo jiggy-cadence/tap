@@ -28,7 +28,7 @@ Not in this repo: the stone firmware (ESP32, solenoid, HMAC over magnetic pulses
 
 ```
 npm install          # @solana/web3.js, @solana/spl-token
-npm test             # 97 pass: vault 24, canon 22, shamir 9, executors 8, squads 9, cosign 23, squads-type 2. No network.
+npm test             # 98 pass: vault 24, canon 22, shamir 9, executors 8, squads 10, cosign 23, squads-type 2. No network.
 npm run e2e          # devnet, SPL 2-of-2 path. Creates devnet-keys.json (mode 600, gitignored) on first run; airdrops if needed.
 npm run e2e:squads   # devnet, Squads v4 path (below). Same keys. Refuses any RPC that is not devnet.
 ```

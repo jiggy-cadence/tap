@@ -46,7 +46,7 @@ Our own agents have cost us money with no attacker involved: a key with no limit
 
 **Why Solana.** The allowance is a program rule, not our JavaScript. Any existing Squads vault adopts TAP by adding the phone as a member, and sub-second finality keeps request, tap, approve, execute at human speed. Consensus a remote attacker can join; presence a remote attacker can't fake.
 
-**Public good.** MIT-licensed, including the verifier, the attack suites (97 tests in `vault/` alone, re-run from a fresh clone; every refusal asserts its named reason), and our math, including a weakness we published against ourselves: blind, the bump rhythm is forgeable about 1 in 235 at defaults, and `stone/BUMP-MATH.md` shows the fix. The receipt is a convention any wallet can adopt.
+**Public good.** MIT-licensed, including the verifier, the attack suites (98 tests in `vault/` alone, re-run from a fresh clone; every refusal asserts its named reason), and our math, including a weakness we published against ourselves: blind, the bump rhythm is forgeable about 1 in 235 at defaults, and `stone/BUMP-MATH.md` shows the fix. The receipt is a convention any wallet can adopt.
 
 **What TAP does not claim.** It gates the key, not the location: it can't prove distance, so a relay is possible. The receipt proves the co-signers signed this intent, not that a human stood at the stone. The stone key sits in ESP32 flash (secure element on the roadmap). The stone's answer is 16 bits, with a hard lock after 10 fails (≈0.26% ever). The agent and vault must run on different devices. Full list in the README.
 
@@ -79,13 +79,13 @@ Script: `DEMO-SCRIPT.md` in jiggy-cadence/tap: npm test, then the devnet drain s
 - [x] Fable: SPL e2e path, separate mint authority, verified via getTransaction. Done 18:54Z.
 - [x] Fable: S1 to S10 closed with failing-first tests. Done 19:20Z.
 - [x] Fable: Squads v4 path (`squads.js`, 9 mock tests, `e2e-squads-devnet.js`), verified on devnet, re-read independently. Done 19:46Z.
-- [ ] **REPO SPLIT:** `github.com/jiggy-cadence/tap` holds firmware/, stone/ (signer.js, policy, squads-devnet.js never run), expo/, page/. It does NOT hold tap-vault, but this draft cites tap-vault files and txs. Add tap-vault as `vault/` and cross-link. Jiggy decides, Cadence executes.
+- [x] Repo split: tap-vault is in `jiggy-cadence/tap` as `vault/`, cross-linked from README.md (commits 4cd6522, ee4b229).
 - [ ] Cadence: `npm ci && npm test` from a clean clone (this box uses symlinked deps; `@sqds/multisig` was installed to `/tmp/sqds-install` and symlinked).
 - [ ] **Lodestone:** phone app source into the repo. Confirm detector tolerance at most 1 and that the approve path uses `vault.phone.approve` with the escalating lockout. Until then every "stone" in the demo is simulated and the copy says so.
 - [ ] **Lodestone or Jiggy:** a real magnetometer clip of a ceremony, or "prototype rig" on screen.
-- [ ] Aperture: adversarial pass on `squads.js` and the Squads e2e; any bypass becomes a failing test first.
+- [x] Aperture: adversarial pass on `squads.js`. Gap found: the executor checked the proposal but trusted that the multisig needs the phone, so on an existing vault with a configAuthority, threshold 1, or a third voter, the phone's approval was decoration. Failing test first, then fix: before signing it now reads the Multisig account and refuses unless configAuthority is none, the phone is a voting member, and all other voters together stay below threshold. The live devnet multisig 7PVFYK passes the new check (no config authority, threshold 2, 2 voters). Not a bypass of the demo setup, which was already 2-of-2.
 - [ ] Jiggy: pricing confirmation (section 5), founder line, demand names, logo, register all members.
-- [ ] Public repo push (not done; nothing pushed or posted). `devnet-keys.json` and `*-last-run.json` are gitignored.
+- [x] Public repo push: live at github.com/jiggy-cadence/tap. `devnet-keys.json` and `*-last-run.json` are gitignored.
 - [ ] Videos done, then submit.
 
 ## 10. Scores (1 to 10, equal weight; reasoning in FIT-AND-ROADMAP.md section 4)

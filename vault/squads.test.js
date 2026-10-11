@@ -29,7 +29,15 @@ function vaultTxAccount(index, ixs) {
   return { data, owner: multisig.PROGRAM_ID, lamports: 1, executable: false };
 }
 const transferIx = (to, lamports) => web3.SystemProgram.transfer({ fromPubkey: vaultPda, toPubkey: to, lamports });
-const mkConn = accounts => ({ calls: 0, accounts, async getLatestBlockhash() { this.calls++; return { blockhash: BLOCKHASH, lastValidBlockHeight: 99 }; },
+// the Multisig account the executor reads to confirm the phone's vote is actually required on chain
+function multisigAccount({ configAuthority = web3.PublicKey.default, threshold = 2, members = [agent.publicKey, phone.publicKey], owner = multisig.PROGRAM_ID, perms } = {}) {
+  const acct = multisig.accounts.Multisig.fromArgs({ createKey, configAuthority, threshold, timeLock: 0, transactionIndex: 9n, staleTransactionIndex: 0n, rentCollector: null, bump: 0,
+    members: members.map((key, i) => ({ key, permissions: perms ? perms[i] : multisig.types.Permissions.all() })) });
+  const [data] = acct.serialize();
+  return { data, owner, lamports: 1, executable: false };
+}
+const MS = multisigPda.toBase58();
+const mkConn = accounts => ({ calls: 0, accounts: { [MS]: multisigAccount(), ...accounts }, async getLatestBlockhash() { this.calls++; return { blockhash: BLOCKHASH, lastValidBlockHeight: 99 }; },
   async getAccountInfo(addr) { return this.accounts[addr.toBase58()] || null; } });
 const txPda = i => multisig.getTransactionPda({ multisigPda, index: BigInt(i) })[0].toBase58();
 
@@ -85,6 +93,29 @@ let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('PASS', 
     await assert.rejects(squads_vault_transfer(intent, S, null, conn), /policy/);
     await assert.rejects(squads_vault_transfer({ ...intent, transactionIndex: -1 }, S, pol, conn), /transactionIndex/);
     await assert.rejects(squads_vault_transfer({ ...intent, transactionIndex: 1.5 }, S, pol, conn), /transactionIndex/);
+  });
+  // Aperture adversarial pass (2026-10-11): the vault checked the PROPOSAL but trusted that the multisig needs the phone.
+  // "Any existing Squads vault can add TAP" means pol.multisig may be a vault where the phone's approval is decoration.
+  await t('MULTISIG WHERE THE PHONE IS NOT REQUIRED -> refused, nothing signed (configAuthority, threshold 1, phone missing, extra voter)', async () => {
+    const other = web3.Keypair.generate().publicKey;
+    const P = multisig.types.Permissions, Perm = multisig.types.Permission;
+    const cases = [
+      [{ configAuthority: agent.publicKey }, /configAuthority/],                       // agent can rewrite members/threshold alone
+      [{ threshold: 1 }, /phone's vote is not required/],                               // agent executes alone
+      [{ members: [agent.publicKey, other] }, /phone is not a voting member/],
+      [{ members: [agent.publicKey, phone.publicKey, other], threshold: 2 }, /phone's vote is not required/],   // agent + other bypass the phone
+      [{ perms: [P.all(), P.fromPermissions([Perm.Initiate, Perm.Execute])] }, /phone is not a voting member/],
+      [{ owner: web3.SystemProgram.programId }, /not owned by the Squads program/],
+    ];
+    cases.push([null, /not a Squads Multisig account/]);
+    void [
+    ];
+    for (const [cfg, re] of cases)
+      await assert.rejects(squads_vault_transfer(intent, S, pol, mkConn({ ...good, [MS]: cfg ? multisigAccount(cfg) : good[txPda(7)] })), re);   // null: VaultTransaction bytes at the multisig address
+    await assert.rejects(squads_vault_transfer(intent, S, pol, { ...mkConn(good), async getAccountInfo(a) { return a.toBase58() === MS ? null : good[a.toBase58()] || null; } }), /no Squads multisig/);
+    // 3 members, threshold 3: phone still required -> allowed
+    const three = mkConn({ ...good, [MS]: multisigAccount({ members: [agent.publicKey, phone.publicKey, other], threshold: 3 }) });
+    assert.equal((await squads_vault_transfer(intent, S, pol, three)).result.transactionIndex, 7);
   });
   await t('decodeSquadsErr names the Squads custom error from meta.err', async () => {
     assert.equal(decodeSquadsErr({ InstructionError: [0, { Custom: 6026 }] }), 'SpendingLimitExceeded');
