@@ -6,8 +6,8 @@ Written 2026-10-10 evening CT by Aperture, from the wire (text only, since 22:00
 Legend: **V** = verified in code/tests/chain today · **J** = Aperture's judgement, not measured · ✅ = fixed tonight (this commit).
 Effort: S < 2 h · M = half a day · L = days+. Pre = before the Fair submission; Post = roadmap.
 
-Test total at this commit: **328**, all passing (re-run 2026-10-11 ~8:54 PM CT): vault 103 (25+22+9+8+10+27+2), stone 70 (21+27+9+13), sdk 11, expo 49 (38+6+5 lock-store), art 77 (seal 18, receipt 9, vowfield 12, aperture 38), firmware 18 (17 gcc + 1 pin_tolerance).
-(321 → 328: +1 vault lockStore-survives-restart already at Cadence 4d486d4 counted in vault.test 25; +5 expo/lock-store; +1 firmware pin test for t=1 + DEBUG KEY/DIGEST + touch-gated key.)
+Test total at this commit: **444**, all passing (`./check.sh` ALL GREEN, 18 suites, re-run 2026-10-11 11:03 AM CT, after Cadence's guard v2.1): vault 113 (25+22+9+8+10+31+2+6), stone 102 (13 bump + 32 stone-sig + 21+27+9 tap), sdk 11, expo 98 (38 cosign-adapter + 5 lock-store + 6 reasons + 49 stone-gate), page 82 (35 atlas + 8 lineage + 9 receipt + 18 seal + 12 vowfield), firmware 38 (33 host + 5 bench self-test).
+(This supersedes the earlier 328 figure; every number above is read from this run, one suite at a time.)
 
 ## CRYPTO
 
