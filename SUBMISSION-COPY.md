@@ -53,6 +53,7 @@ Our own agents have cost us money with no attacker involved: a key with no limit
 **Beyond wallets.** The same allowance-plus-tap model covers API keys; an OpenRouter executor ships in the vault.
 
 ## 4. Roadmap (detail and checks in FIT-AND-ROADMAP.md section 5)
+- **Security stack (math and status per layer in `SECURITY-STACK.md`):** today 1 in 386 blind (16-bit magnet, hard lock) → v1.5 ≈3e-11 (32-bit magnet + keyed rhythm, firmware only) → v2 ≈3e-27 (+ ultrasonic). Secure element first for production, UWB for true distance, "TAP Pro" tripwires that refuse to sign if the room looks wrong. Every layer must pass ≥99% of honest taps on the bench before it ships.
 - **By submission:** one repo (`tap-vault` merged into `jiggy-cadence/tap` as `vault/`), firmware and app source public or every stone labelled "prototype rig", a ceremony on camera, pricing decided, demand names, videos.
 - **30 days:** phone app approving through `vault.phone.approve` with a real magnetometer decode; agent on a server and vault on the phone, over a network; 24-bit answers; a `wrapSigner` adapter for Solana Agent Kit and ElizaOS; a Blink that opens a TAP request from a link; CI green from a clean clone; first 5 external people run the devnet e2e.
 - **90 days:** secure element on the stone (ATECC608A class); 32-bit answers as default; a Squads v4 vault on mainnet with our own funds under a written cap; `@tap/vault` on npm with two adapters; 10 hand-built stones with 10 users; 3 paying; external security review of `vault.js` and `squads.js`.
