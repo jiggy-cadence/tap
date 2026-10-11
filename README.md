@@ -4,7 +4,7 @@
 
 *simulated stone; devnet txs in evidence/*
 
-Your agent can spend small amounts inside a rolling 24-hour allowance. Anything bigger, to a new wallet, or a drain needs you to tap your phone on the stone (ESP32 + solenoid).
+Your agent can spend small amounts inside a daily allowance (a Squads v4 spending limit, enforced on chain). Anything bigger, to a new wallet, or a drain needs you to tap your phone on the stone (ESP32 + solenoid).
 
 Colosseum World's Fair 2026 submission. Built during the entry period (Sep 14 – Oct 12, 2026).
 
