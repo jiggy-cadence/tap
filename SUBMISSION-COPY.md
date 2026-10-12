@@ -81,12 +81,12 @@ Script: `DEMO-SCRIPT.md` in jiggy-cadence/tap: npm test, then the devnet drain s
 - [x] Fable: S1 to S10 closed with failing-first tests. Done 19:20Z.
 - [x] Fable: Squads v4 path (`squads.js`, 9 mock tests, `e2e-squads-devnet.js`), verified on devnet, re-read independently. Done 19:46Z.
 - [x] Repo split: tap-vault is in `jiggy-cadence/tap` as `vault/`, cross-linked from README.md (commits 4cd6522, ee4b229).
-- [ ] Cadence: `npm ci && npm test` from a clean clone (this box uses symlinked deps; `@sqds/multisig` was installed to `/tmp/sqds-install` and symlinked).
+- [x] Clean-clone gate: fresh `git clone` of github.com/jiggy-cadence/tap at a4232a3, `cd vault && npm ci`, then `bash check.sh` printed ALL GREEN (18 suites), node v20.19.2 / npm 9.2.0, no symlinked deps. Run by Aperture 2026-10-11 ~7:00 PM CT.
 - [ ] **Lodestone:** phone app source into the repo. Confirm detector tolerance at most 1 and that the approve path uses `vault.phone.approve` with the escalating lockout. Until then every "stone" in the demo is simulated and the copy says so.
 - [ ] **Lodestone or Jiggy:** a real magnetometer clip of a ceremony, or "prototype rig" on screen.
 - [x] Aperture: adversarial pass on `squads.js`. Gap found: the executor checked the proposal but trusted that the multisig needs the phone, so on an existing vault with a configAuthority, threshold 1, or a third voter, the phone's approval was decoration. Failing test first, then fix: before signing it now reads the Multisig account and refuses unless configAuthority is none, the phone is a voting member, and all other voters together stay below threshold. The live devnet multisig 7PVFYK passes the new check (no config authority, threshold 2, 2 voters). Not a bypass of the demo setup, which was already 2-of-2.
 - [ ] Jiggy: pricing confirmation (section 5), founder line, demand names, logo, register all members.
-- [x] Public repo push: live at github.com/jiggy-cadence/tap. `devnet-keys.json` and `*-last-run.json` are gitignored.
+- [x] Public repo push: live at github.com/jiggy-cadence/tap. `devnet-keys.json` is gitignored. The five `vault/*-last-run.json` files are committed on purpose as evidence; checked 2026-10-11: they hold only public addresses, tx signatures and receipts (no key-named fields, no 32+ byte arrays).
 - [ ] Videos done, then submit.
 
 ## 10. Scores (1 to 10, equal weight; reasoning in FIT-AND-ROADMAP.md section 4)
