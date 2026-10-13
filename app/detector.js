@@ -112,7 +112,7 @@ function sha256Hex(bytes) {
 const SYMBOL_MS = 250;
 const PREAMBLE = [1,0,1,0,1,0,1,0];
 const N_PRE = PREAMBLE.length;
-const N_PAY = 32;
+const N_PAY = 16; // matches solenoid_two_sided.ino firePattern: 16 HMAC bits (pinned 2026-10-13)
 
 function median(a) {
   const s = [...a].sort((x,y)=>x-y);
@@ -140,6 +140,29 @@ function findPreamble(samples) {
     const norm = Math.sqrt(e * tpl.length);
     const score = norm > 1e-9 ? s / norm : 0;
     if (!best || score > best.score) best = { idx: i, score, t0: samples[i].t };
+  }
+  // AMBIGUITY (measured 2026-10-13): when the payload begins "10", the air reads
+  // 1010101010 and the template scores the same 2 symbols late; the global max took
+  // the late lock ~25% of the time. The stone is silent before it fires and the
+  // preamble starts ON, so the first rise above mid-level marks the true start.
+  // Step back in whole 2-symbol periods while that keeps us at or after the onset.
+  if (best) {
+    const sorted = mags.slice().sort((x, y) => x - y);
+    const lo = sorted[Math.floor(sorted.length * 0.1)], hi = sorted[Math.floor(sorted.length * 0.9)];
+    const mid = (lo + hi) / 2;
+    let onset = mags.findIndex(m => m > mid);
+    if (onset >= 0) {
+      // anchor on the onset itself (search +/- half a symbol for the best local alignment);
+      // keep it only if the preamble really correlates there, else fall back to the max
+      let bi = -1, bs = -1;
+      for (let k = Math.max(0, onset - Math.ceil(per / 2)); k <= onset + Math.ceil(per / 2) && k + tpl.length <= z.length; k++) {
+        let s2 = 0, e2 = 0;
+        for (let j = 0; j < tpl.length; j++) { s2 += z[k+j] * tpl[j]; e2 += z[k+j] * z[k+j]; }
+        const nn = Math.sqrt(e2 * tpl.length), v = nn > 1e-9 ? s2 / nn : 0;
+        if (v > bs) { bs = v; bi = k; }
+      }
+      if (bi >= 0 && bs >= 0.8 * best.score) best = { idx: bi, score: bs, t0: samples[bi].t };
+    }
   }
   return best;
 }
