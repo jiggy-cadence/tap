@@ -50,7 +50,8 @@ const ARTS = [
 ];
 
 // ---- Generative seal: the ceremony draws itself ----
-// bits: array of 32 (1 | 0 | null). digestHex: hex string seeding the inner
+// bits: array of N_PAY (16) — one bit per ring segment (4ed1eae).
+// digestHex: hex string seeding the inner
 // pattern. phase + mag drive the living state.
 function TapSeal({ bits, digestHex, phase, mag }) {
   const N = N_PAY, R = 104, C = 130, BOX = 260;
