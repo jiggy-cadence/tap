@@ -97,6 +97,9 @@ export default function App() {
   const [phase, setPhase] = useState(PHASE.IDLE);
   const [demoMode, setDemoMode] = useState(false); // H1: default OFF. Demo mode simulates the stone; ceremony always passes with zero physics. Never film with this on.
   const [mag, setMag] = useState(null); // live |B|
+  const [wave, setWave] = useState(Array(48).fill(50)); // rolling field visualization
+  const waveBuf = useRef([]);
+  const waveTick = useRef(0);
   const [status, setStatus] = useState('Idle. Review the transaction, then approve with the stone.');
   const [result, setResult] = useState(null);
   const samples = useRef([]);
@@ -113,6 +116,11 @@ export default function App() {
       setMag(m);
       samples.current.push({ t: Date.now(), mag: m });
       if (samples.current.length > 2000) samples.current.splice(0, 500);
+      // Field visualization: rolling 48-sample buffer, re-render at ~10Hz.
+      waveBuf.current.push(m);
+      if (waveBuf.current.length > 48) waveBuf.current.shift();
+      waveTick.current += 1;
+      if (waveTick.current % 5 === 0) setWave([...waveBuf.current]);
       // Pull-away guard: during LISTENING, a collapse to baseline aborts.
       // (Threshold set from pre-ceremony baseline; simplified here.)
     });
@@ -262,7 +270,7 @@ export default function App() {
     // to sign any tx whose intent doesn't match.
     signer.attest({ challengeHex: receiptHex, intentDigest: intentHex, confidence: 1 });
     setPhase(PHASE.ATTESTED);
-    setStatus('Verified: stone code matched (at most 1 slot flip allowed), commit bound, intent bound. Signing…');
+    setStatus('Two-sided attested (≤1 bit flip accepted, commit bound, intent bound). Signing…');
     const s = signer.sign({ tx: MOCK_TX, challengeHex: receiptHex, intentDigest: intentHex });
     if (s.ok) {
       setPhase(PHASE.SIGNED);
@@ -343,101 +351,136 @@ export default function App() {
     [PHASE.ATTESTED]: '#e8a33d', [PHASE.LISTENING]: '#e8a33d',
   }[phase] || '#ece1c9';
 
-  return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.pad}>
-      <Text style={styles.title}>TAP ◉ ceremony</Text>
-      <Text style={styles.sub}>Two-party Authenticated Presence — Fair demo (DEMO-GRADE)</Text>
-      {demoMode && (
-        <View style={styles.demoWarn}>
-          <Text style={styles.demoWarnT}>⚠ DEMO MODE — NO STONE. Ceremony is simulated. Do not film this.</Text>
-        </View>
-      )}
+  // Ritual voice — the mystic register. No jargon on screen.
+  const phaseLabel = {
+    [PHASE.SENDING]: 'Calling…',
+    [PHASE.LISTENING]: 'Listen.',
+    [PHASE.VERIFYING]: 'Reading…',
+    [PHASE.ATTESTED]: 'Sealed…',
+  }[phase] || '';
+  const phaseSub = {
+    [PHASE.LISTENING]: 'Hold your phone to the stone.',
+    [PHASE.VERIFYING]: 'The field carries the key.',
+  }[phase] || '';
+  const shortAddr = MOCK_TX.to.slice(0, 4) + '…' + MOCK_TX.to.slice(-3);
 
-      <View style={styles.card}>
-        <Text style={styles.h}>Agent requests</Text>
-        <Text style={styles.tx}>{MOCK_TX.action}</Text>
-        <Text style={styles.h2}>What it actually does</Text>
-        {sim.map((l, i) => <Text key={i} style={styles.sim}>• {l}</Text>)}
+  return (
+    <View style={styles.root}>
+      <View style={styles.header}>
+        <Text style={styles.mark}>◉</Text>
+        <Text style={styles.wordmark}>TAP</Text>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.h}>Stone ceremony</Text>
-        <View style={styles.row}>
-          <Text style={styles.lbl}>Demo mode (no stone)</Text>
-          <Switch value={demoMode} onValueChange={setDemoMode} />
+      <ScrollView contentContainerStyle={styles.body}>
+        {demoMode && (
+          <View style={styles.demoPill}>
+            <Text style={styles.demoPillT}>demo mode — no stone</Text>
+          </View>
+        )}
+
+        <Text style={styles.askLabel}>Agent wants to send</Text>
+        <Text style={styles.amount}>{MOCK_TX.amountSol.toFixed(2)} SOL</Text>
+        <Text style={styles.address}>to {shortAddr}</Text>
+
+        <View style={styles.meaningCard}>
+          {sim.map((l, i) => <Text key={i} style={styles.meaning}>• {l}</Text>)}
         </View>
-        <Text style={styles.mag}>|B| live: {mag === null ? '—' : mag.toFixed(1) + ' µT'}</Text>
-        <Text style={[styles.phase, { color: phaseColor }]}>{phase.toUpperCase()}</Text>
-        <Text style={styles.status}>{status}</Text>
-        {phase === PHASE.IDLE || phase === PHASE.SIGNED || phase === PHASE.REFUSED || phase === PHASE.ABORTED ? (
-          <TouchableOpacity style={styles.btn} onPress={phase === PHASE.IDLE ? beginCeremony : reset}>
-            <Text style={styles.btnT}>{phase === PHASE.IDLE ? 'Approve with stone' : 'Reset'}</Text>
+
+        {/* The field between two poles — the visual heart */}
+        <Text style={styles.poleTop}>◉ stone</Text>
+        <View style={styles.wave}>
+          {wave.map((v, i) => (
+            <View key={i} style={[
+              styles.waveBar,
+              {
+                height: Math.max(3, Math.min(110, (v - 30) / 970 * 110)),
+                backgroundColor: v > 200 ? '#e8a33d' : 'rgba(154,140,109,.35)',
+              }
+            ]} />
+          ))}
+        </View>
+        <Text style={styles.poleBottom}>◉ you</Text>
+        <Text style={styles.meterLabel}>
+          {mag === null ? '—' : mag.toFixed(0) + ' µT'}
+        </Text>
+
+        {phaseLabel !== '' && (
+          <Text style={[styles.phase, { color: phaseColor }]}>{phaseLabel}</Text>
+        )}
+        {phaseSub !== '' && (
+          <Text style={styles.phaseSub}>{phaseSub}</Text>
+        )}
+        {phaseSub === '' && <Text style={styles.status}>{status}</Text>}
+
+        {result && (
+          <View style={[styles.verdict, result.ok ? styles.verdictOk : styles.verdictBad]}>
+            <Text style={[styles.verdictWord, { color: result.ok ? '#4ade80' : '#f87171' }]}>
+              {result.ok ? 'Verified.' : 'Blocked.'}
+            </Text>
+            <Text style={styles.receipt}>
+              {result.signature
+                ? result.signature.slice(0, 32) + '…'
+                : (result.error || '')}
+            </Text>
+          </View>
+        )}
+
+        {phase === PHASE.IDLE ? (
+          <TouchableOpacity style={styles.tapButton} onPress={beginCeremony}>
+            <Text style={styles.tapButtonText}>TAP TO APPROVE</Text>
+          </TouchableOpacity>
+        ) : (phase === PHASE.SIGNED || phase === PHASE.REFUSED || phase === PHASE.ABORTED) ? (
+          <TouchableOpacity style={styles.ghostButton} onPress={reset}>
+            <Text style={styles.ghostButtonText}>Start over</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={[styles.btn, styles.btnKill]} onPress={abort}>
-            <Text style={styles.btnT}>Pull away / abort</Text>
+          <TouchableOpacity style={styles.killButton} onPress={abort}>
+            <Text style={styles.killButtonText}>Cancel</Text>
           </TouchableOpacity>
         )}
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.h}>Bump link — bench tool (unbenched)</Text>
-        <Text style={styles.note}>Phone flat on stone. Stone: `kicks {'<nonce>'}`. App: capture + verify. Measures the link — does NOT gate signing.</Text>
-        <View style={styles.row}>
-          <Text style={styles.lbl}>nonce (uint32)</Text>
-          <TextInput style={styles.input} value={bumpNonce} onChangeText={setBumpNonce} keyboardType="numeric" editable={!bumpBusy} />
-        </View>
-        <TouchableOpacity style={[styles.btn, bumpBusy && styles.btnDim]} onPress={runBumpBench} disabled={bumpBusy}>
-          <Text style={styles.btnT}>{bumpBusy ? 'Capturing…' : 'Capture 8 s + verify'}</Text>
+        <TouchableOpacity onPress={() => setDemoMode(!demoMode)} style={styles.demoToggle}>
+          <Text style={styles.demoToggleText}>
+            {demoMode ? '● demo mode on' : '○ demo mode'}
+          </Text>
         </TouchableOpacity>
-        {bumpReport && (
-          <Text style={[styles.mono, bumpReport.ok === false && styles.err, bumpReport.ok === true && styles.ok]}>{bumpReport.line}</Text>
-        )}
-      </View>
-
-      {result && (
-        <View style={styles.card}>
-          <Text style={styles.h}>{result.ok ? 'Signed' : 'Refused'}</Text>
-          {result.signature
-            ? <Text style={styles.mono}>{result.signature}</Text>
-            : <Text style={styles.err}>{result.error}{result.confidence !== undefined ? ` (confidence ${Number(result.confidence).toFixed(2)})` : ''}</Text>}
-          <Text style={styles.note}>Mock signer. Real signer holds keys in an isolated domain; the agent never sees key material.</Text>
-        </View>
-      )}
-
-      <Text style={styles.foot}>
-        Protocol: preamble 10101010 + 16 HMAC-SHA256 bits ("mag"||challenge), 250ms symbols.
-        Attestation single-use, 30s TTL. Demo key pre-shared — real pairing TBD.
-      </Text>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0d0b08' },
-  pad: { padding: 18, paddingBottom: 60 },
-  title: { color: '#ece1c9', fontSize: 26, fontWeight: '700', letterSpacing: 1 },
-  sub: { color: '#9a8c6d', fontSize: 12, marginBottom: 14 },
-  card: { backgroundColor: '#151210', borderColor: 'rgba(236,225,201,.14)', borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 12 },
-  h: { color: '#e8a33d', fontSize: 13, fontWeight: '700', marginBottom: 6, letterSpacing: 1 },
-  h2: { color: '#9a8c6d', fontSize: 12, marginTop: 8, marginBottom: 4 },
-  tx: { color: '#ece1c9', fontSize: 18, fontWeight: '600' },
-  sim: { color: '#ece1c9', fontSize: 13, marginBottom: 3 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  lbl: { color: '#ece1c9', fontSize: 13 },
-  mag: { color: '#9a8c6d', fontSize: 13, fontFamily: 'monospace', marginBottom: 4 },
-  phase: { fontSize: 15, fontWeight: '700', letterSpacing: 2, marginVertical: 4 },
-  status: { color: '#ece1c9', fontSize: 13, marginBottom: 10 },
-  btn: { backgroundColor: '#e8a33d', borderRadius: 8, padding: 14, alignItems: 'center' },
-  btnKill: { backgroundColor: '#7f1d1d' },
-  btnDim: { opacity: 0.5 },
-  input: { backgroundColor: '#0d0b08', color: '#ece1c9', borderColor: 'rgba(236,225,201,.2)', borderWidth: 1, borderRadius: 6, padding: 8, width: 160, fontFamily: 'monospace' },
-  ok: { color: '#4ade80' },
-  btnT: { color: '#0d0b08', fontWeight: '700', fontSize: 15 },
-  mono: { color: '#4ade80', fontSize: 11, fontFamily: 'monospace' },
-  err: { color: '#f87171', fontSize: 13 },
-  note: { color: '#9a8c6d', fontSize: 11, marginTop: 6 },
-  foot: { color: '#9a8c6d', fontSize: 10, marginTop: 8 },
-  demoWarn: { backgroundColor: '#7f1d1d', borderRadius: 8, padding: 12, marginBottom: 12, borderWidth: 2, borderColor: '#f87171' },
-  demoWarnT: { color: '#fecaca', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  root: { flex: 1, backgroundColor: '#000' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 54, paddingBottom: 8 },
+  mark: { color: '#e8a33d', fontSize: 22, marginRight: 8 },
+  wordmark: { color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: 8 },
+  body: { padding: 24, paddingBottom: 60, alignItems: 'stretch' },
+  demoPill: { alignSelf: 'center', backgroundColor: 'rgba(232,163,61,.12)', borderColor: 'rgba(232,163,61,.4)', borderWidth: 1, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, marginBottom: 16 },
+  demoPillT: { color: '#e8a33d', fontSize: 11, fontWeight: '600' },
+  askLabel: { color: '#8a8a8a', fontSize: 15, textAlign: 'center', marginTop: 8 },
+  amount: { color: '#fff', fontSize: 64, fontWeight: '800', textAlign: 'center', letterSpacing: -1, marginTop: 4 },
+  address: { color: '#8a8a8a', fontSize: 14, textAlign: 'center', marginTop: 4, fontFamily: 'Menlo' },
+  meaningCard: { backgroundColor: 'rgba(255,255,255,.04)', borderRadius: 16, padding: 16, marginTop: 20, marginBottom: 8 },
+  meaning: { color: '#d4d4d4', fontSize: 13, lineHeight: 20, marginBottom: 4 },
+  poleTop: { color: '#e8a33d', fontSize: 12, textAlign: 'center', marginTop: 20, letterSpacing: 3, fontFamily: 'Menlo' },
+  wave: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', height: 120, marginTop: 6 },
+  waveBar: { width: 4, marginHorizontal: 1.5, borderRadius: 2 },
+  poleBottom: { color: '#ece1c9', fontSize: 12, textAlign: 'center', marginTop: 6, letterSpacing: 3, fontFamily: 'Menlo' },
+  meterLabel: { color: '#8a8a8a', fontSize: 12, textAlign: 'center', marginTop: 8, fontFamily: 'Menlo' },
+  phase: { fontSize: 34, fontWeight: '400', textAlign: 'center', marginTop: 22, fontFamily: 'Georgia', fontStyle: 'italic' },
+  phaseSub: { color: '#9a8c6d', fontSize: 13, textAlign: 'center', marginTop: 8, fontFamily: 'Georgia', fontStyle: 'italic' },
+  status: { color: '#b0b0b0', fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 18, fontFamily: 'Menlo' },
+  verdict: { borderRadius: 20, padding: 32, marginTop: 22, alignItems: 'center', borderWidth: 2 },
+  verdictOk: { borderColor: 'rgba(74,222,128,.5)', backgroundColor: 'rgba(74,222,128,.06)' },
+  verdictBad: { borderColor: 'rgba(248,113,113,.5)', backgroundColor: 'rgba(248,113,113,.06)' },
+  verdictWord: { fontSize: 44, fontFamily: 'Georgia', fontStyle: 'italic' },
+  receipt: { color: '#8a8a8a', fontSize: 11, fontFamily: 'Menlo', marginTop: 12, textAlign: 'center' },
+  tapButton: { backgroundColor: '#e8a33d', borderRadius: 18, padding: 22, alignItems: 'center', marginTop: 28 },
+  tapButtonText: { color: '#000', fontWeight: '800', fontSize: 19, letterSpacing: 2 },
+  ghostButton: { borderColor: 'rgba(255,255,255,.2)', borderWidth: 1, borderRadius: 18, padding: 16, alignItems: 'center', marginTop: 28 },
+  ghostButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  killButton: { backgroundColor: 'rgba(248,113,113,.12)', borderColor: 'rgba(248,113,113,.4)', borderWidth: 1, borderRadius: 18, padding: 16, alignItems: 'center', marginTop: 28 },
+  killButtonText: { color: '#f87171', fontWeight: '600', fontSize: 15 },
+  demoToggle: { alignSelf: 'center', marginTop: 26, padding: 10 },
+  demoToggleText: { color: '#555', fontSize: 12 },
 });
