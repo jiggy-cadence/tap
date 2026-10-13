@@ -1,0 +1,21 @@
+{
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@noble/post-quantum": "^0.7.1",
+    "expo": "~57.0.0",
+    "expo-sensors": "~57.0.3",
+    "expo-status-bar": "~57.0.1",
+    "hermes-compiler": "^250829098.0.19",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-get-random-values": "~1.11.0",
+    "react-native-safe-area-context": "~5.7.0"
+  },
+  "main": "index.js",
+  "name": "tap-ceremony",
+  "private": true,
+  "scripts": {
+    "start": "expo start"
+  },
+  "version": "0.1.0"
+}

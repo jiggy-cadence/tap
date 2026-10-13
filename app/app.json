@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "icon": "./assets/icon.png",
+    "ios": {
+      "infoPlist": {
+        "NSMotionUsageDescription": "TAP reads the magnetometer to detect the stone's keyed magnetic ceremony."
+      },
+      "supportsTablet": false
+    },
+    "name": "TAP Ceremony",
+    "orientation": "portrait",
+    "plugins": [
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "TAP reads the magnetometer to detect the stone's keyed magnetic ceremony."
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "slug": "tap-ceremony",
+    "splash": {
+      "backgroundColor": "#0d0b08"
+    },
+    "userInterfaceStyle": "dark",
+    "version": "0.1.0",
+    "owner": "jiggyj",
+    "extra": {
+      "eas": {
+        "projectId": "00d5c53a-fd04-4945-8f49-33601230446d"
+      }
+    }
+  }
+}
