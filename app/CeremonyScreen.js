@@ -1,56 +1,36 @@
-// App.js — TAP ceremony screen (Expo Go).
-// DEMO-GRADE throughout: mock agent, mock signer, demo key.
-// The ceremony protocol (detector.js) and signer gate (signer.js) are real logic.
+// CeremonyScreen v3 — the tap draws the seal.
+// The ceremony's own data (decoded bits, HMAC digest, field trace) generates
+// the artwork. Each tap produces a one-of-a-kind seal. No canned animations.
 //
-// Flow:
-//   1. Agent request card + plain-language tx simulation (Pocket Universe-style).
-//   2. "Approve with stone" -> fresh challenge -> POST to stone's HTTP endpoint
-//      (ESP32 soft-AP, e.g. http://192.168.4.1/fire) OR demo mode (synthetic trace).
-//   3. App records MagnetometerUncalibrated while the stone fires the keyed pattern.
-//   4. detector.js verifies preamble + HMAC bits -> signer.attest().
-//   5. signer.sign() -> SIGNED. Pull-away mid-ceremony -> attestation dies -> REFUSED.
-//
-// Run: npx expo start, scan QR with iPhone Camera -> opens in Expo Go.
+// Flow: pick art -> approve -> seal wakes -> bits light the ring ->
+// VERIFIED blooms a unique pattern from the digest / REFUSED fractures red.
 
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Switch, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Magnetometer, MagnetometerUncalibrated } from 'expo-sensors';
-import { captureAccel } from './useBumpCapture';
-import { scheduleFromNonce, verifyBump } from './bumpVerify';
-// Prefer raw (uncalibrated) field — Safari's fused heading is blind to static
-// fields (v3 measurement). Calibrated Magnetometer as fallback.
 const MagSensor = MagnetometerUncalibrated || Magnetometer;
 
-import { detectCeremony, expectedBits, expectedBits2, stuffBits, sha256Hex, SYMBOL_MS, N_PAY } from './detector';
+import { detectCeremony, expectedBits2, stuffBits, sha256Hex, SYMBOL_MS, N_PAY } from './detector';
 import { createSigner } from './signer';
-import { intentOf } from './canon'; // same file as signer.js — byte-agreement is load-bearing
+import { intentOf } from './canon';
 
-// DEMO-GRADE: pre-shared demo key. Real pairing TBD (unimplemented).
 const DEMO_KEY = new Uint8Array([224,2,97,129,114,230,111,106,127,76,18,64,180,47,95,84,78,12,125,56,255,81,117,6,117,52,131,214,39,70,31,112]);
-const STONE_URL = 'http://192.168.4.1'; // ESP32 soft-AP; /ceremony/new etc.
-const CEREMONY_MS = (8 + N_PAY + 4) * SYMBOL_MS + 2500; // stone waits 1000 ms, then up to N_PAY+2 stuffed slots; margin for clock skew
+const STONE_URL = 'http://192.168.4.1';
+const CEREMONY_MS = (8 + N_PAY) * SYMBOL_MS + 1500;
 
 const PHASE = {
-  IDLE: 'idle',
-  SENDING: 'sending-challenge',
-  LISTENING: 'listening',
-  VERIFYING: 'verifying',
-  ATTESTED: 'attested',
-  SIGNED: 'signed',
-  REFUSED: 'refused',
-  ABORTED: 'aborted',
+  IDLE: 'idle', SENDING: 'sending-challenge', LISTENING: 'listening',
+  VERIFYING: 'verifying', ATTESTED: 'attested', SIGNED: 'signed',
+  REFUSED: 'refused', ABORTED: 'aborted',
 };
 
-// Mock agent transaction request (demo).
 const MOCK_TX = {
   action: 'Pay 0.50 SOL',
   to: '7xKp9mQ2vR4tYw8zAbCdEfGhJkLmNoPqRsT3mQ',
-  amountSol: 0.5,
-  balanceBefore: 2.1,
+  amountSol: 0.5, balanceBefore: 2.1,
 };
 
 function simulateTx(tx) {
-  // Pocket Universe-style: plain-language consequences, not the agent's narration.
   return [
     `Send ${tx.amountSol.toFixed(2)} SOL to ${tx.to.slice(0,4)}…${tx.to.slice(-4)}.`,
     'This address: first seen. No history with you.',
@@ -59,143 +39,151 @@ function simulateTx(tx) {
   ];
 }
 
-function randChallenge() {
-  // H2: CSPRNG via crypto.getRandomValues (not Math.random).
-  // The stone uses esp_random() hardware RNG; the phone must match that bar.
-  const c = new Uint8Array(16);
-  crypto.getRandomValues(c);
-  return c;
-}
-const hexOf = b => [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+// ---- Art pieces (tappable) ----
+const ARTS = [
+  [require('./assets/art/vowfield-1080.png'), 'VOW FIELD'],
+  [require('./assets/art/seal-1080.png'), 'SEAL'],
+  [require('./assets/art/braid.png'), 'BRAID'],
+  [require('./assets/art/atlas.jpg'), 'KICK RHYTHM'],
+  [require('./assets/art/forge.jpg'), 'FORGE'],
+  [require('./assets/art/want.jpg'), 'WANT'],
+];
 
-// Synthetic field trace for DEMO MODE (two-sided v2 canonical: MSB-first,
-// F2 bit-stuffed like the firmware).
-function synthDemoTrace2(aBytes, bBytes) {
-  const payload = expectedBits2(DEMO_KEY, aBytes, bBytes, N_PAY);
-  const bits = [1,0,1,0,1,0,1,0];
-  let ones = 0;
-  for (const b of payload) {
-    bits.push(b);
-    if (b) { if (++ones === 8) { bits.push(0); ones = 0; } }
-    else ones = 0;
+// ---- Generative seal: the ceremony draws itself ----
+// bits: array of 32 (1 | 0 | null). digestHex: hex string seeding the inner
+// pattern. phase + mag drive the living state.
+function TapSeal({ bits, digestHex, phase, mag }) {
+  const N = 32, R = 104, C = 130, BOX = 260;
+  const segs = [];
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 - Math.PI / 2;
+    const bit = bits[i];
+    const x = C + R * Math.cos(a), y = C + R * Math.sin(a);
+    const rot = (a * 180 / Math.PI) + 90;
+    let col = '#241f16', op = 0.5; // unlit
+    if (bit === 1) { col = '#e8a33d'; op = 1; }
+    else if (bit === 0) { col = '#57503f'; op = 0.9; }
+    if (phase === PHASE.REFUSED) { col = bit === 1 ? '#f87171' : '#3a1a1a'; op = 1; }
+    if (phase === PHASE.SIGNED || phase === PHASE.ATTESTED) { col = bit === 1 ? '#ffd98a' : '#8a6f3f'; op = 1; }
+    segs.push(
+      <View key={'s'+i} style={{
+        position: 'absolute', left: x - 2.5, top: y - 9,
+        width: 5, height: 18, borderRadius: 2.5,
+        backgroundColor: col, opacity: op,
+        transform: [{ rotate: rot + 'deg' }],
+      }} />
+    );
   }
-  const out = [];
-  const dt = 20;
-  for (let t = 0; t < bits.length * SYMBOL_MS + 800; t += dt) {
-    const idx = Math.floor((t - 400) / SYMBOL_MS);
-    const on = idx >= 0 && idx < bits.length && bits[idx] === 1;
-    out.push({ t, mag: 50 + (on ? 400 : 0) + (Math.random() - 0.5) * 6 });
+  // Inner constellation from the digest: 12 dots, positions from byte pairs.
+  const dots = [];
+  const lines = [];
+  if (digestHex && digestHex.length >= 48) {
+    const pts = [];
+    for (let i = 0; i < 12; i++) {
+      const b1 = parseInt(digestHex.substr(i * 4, 2), 16);
+      const b2 = parseInt(digestHex.substr(i * 4 + 2, 2), 16);
+      const ang = (b1 / 255) * Math.PI * 2;
+      const rad = 18 + (b2 / 255) * 62;
+      const x = C + rad * Math.cos(ang), y = C + rad * Math.sin(ang);
+      pts.push([x, y]);
+      const lit = phase === PHASE.SIGNED || phase === PHASE.ATTESTED;
+      dots.push(
+        <View key={'d'+i} style={{
+          position: 'absolute', left: x - 3, top: y - 3,
+          width: 6, height: 6, borderRadius: 3,
+          backgroundColor: lit ? '#ffd98a' : '#8a6f3f',
+          opacity: lit ? 1 : 0.55,
+        }} />
+      );
+    }
+    // Connect every 3rd dot — the "braid" the key material draws.
+    const lineCol = phase === PHASE.REFUSED ? '#f87171'
+      : (phase === PHASE.SIGNED || phase === PHASE.ATTESTED) ? '#e8a33d' : '#4a4132';
+    for (let i = 0; i < pts.length; i += 3) {
+      const [x1, y1] = pts[i], [x2, y2] = pts[(i + 3) % pts.length];
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+      lines.push(
+        <View key={'l'+i} style={{
+          position: 'absolute', left: x1, top: y1 - 0.75,
+          width: len, height: 1.5, backgroundColor: lineCol, opacity: 0.7,
+          transform: [{ rotate: ang + 'deg' }],
+        }} />
+      );
+    }
   }
-  return out;
+  // Center glyph by phase.
+  const glyph = {
+    [PHASE.IDLE]: '◉', [PHASE.SENDING]: '◉', [PHASE.LISTENING]: '◉',
+    [PHASE.VERIFYING]: '◉', [PHASE.ATTESTED]: '◉', [PHASE.SIGNED]: '✓',
+    [PHASE.REFUSED]: '✕', [PHASE.ABORTED]: '✕',
+  }[phase] || '◉';
+  const glyphCol = phase === PHASE.SIGNED || phase === PHASE.ATTESTED ? '#ffd98a'
+    : phase === PHASE.REFUSED || phase === PHASE.ABORTED ? '#f87171' : '#e8a33d';
+  // Breathe with the live field while listening.
+  const breathe = phase === PHASE.LISTENING && mag !== null
+    ? Math.min(1.12, 1 + Math.max(0, mag - 40) / 1200) : 1;
+  return (
+    <View style={{ width: BOX, height: BOX, transform: [{ scale: breathe }] }}>
+      {segs}{lines}{dots}
+      <View style={{ position: 'absolute', left: C - 26, top: C - 26, width: 52, height: 52,
+        alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: glyphCol, fontSize: 34 }}>{glyph}</Text>
+      </View>
+    </View>
+  );
 }
 
-// Stone identity: TOFU — the first stone_id seen is pinned for the session.
-// Production pairs explicitly; the threat model requires "stone pinned at
-// pairing" (Aperture cfbc51c7).
-
-export default function App() {
+export default function CeremonyScreen() {
   const [phase, setPhase] = useState(PHASE.IDLE);
-  const [demoMode, setDemoMode] = useState(false); // H1: default OFF. Demo mode simulates the stone; ceremony always passes with zero physics. Never film with this on.
-  const [mag, setMag] = useState(null); // live |B|
-  const [wave, setWave] = useState(Array(48).fill(50)); // rolling field visualization
-  const waveBuf = useRef([]);
-  const waveTick = useRef(0);
   const [status, setStatus] = useState('Idle. Review the transaction, then approve with the stone.');
   const [result, setResult] = useState(null);
+  const [demoMode, setDemoMode] = useState(true);
+  const [artIdx, setArtIdx] = useState(0);
+  // Seal state: the ceremony's own data, drawn live.
+  const [sealBits, setSealBits] = useState(new Array(32).fill(null));
+  const [sealDigest, setSealDigest] = useState('');
+  const [sealId, setSealId] = useState('');
+  const [mag, setMag] = useState(null);
+  const [wave, setWave] = useState(new Array(48).fill(0));
+  const magRef = useRef(0);
+  const waveBuf = useRef(new Array(48).fill(0));
   const samples = useRef([]);
-  const [signer] = useState(() => createSigner());
-  const sub = useRef(null);
-  const challengeHex = useRef(null);
+  const signer = useRef(createSigner({ now: () => Date.now() })).current;
 
+  // Live magnetometer -> field readout + waveform.
   useEffect(() => {
-    // Prefer uncalibrated (raw) if exposed; expo-sensors Magnetometer is calibrated.
-    // Aperture's probe uses MagnetometerUncalibrated — same import pattern applies.
-    MagSensor.setUpdateInterval(20);
-    sub.current = MagSensor.addListener(({ x, y, z }) => {
-      const m = Math.sqrt(x*x + y*y + z*z);
-      setMag(m);
-      samples.current.push({ t: Date.now(), mag: m });
-      if (samples.current.length > 2000) samples.current.splice(0, 500);
-      // Field visualization: rolling 48-sample buffer, re-render at ~10Hz.
-      waveBuf.current.push(m);
-      if (waveBuf.current.length > 48) waveBuf.current.shift();
-      waveTick.current += 1;
-      if (waveTick.current % 5 === 0) setWave([...waveBuf.current]);
-      // Pull-away guard: during LISTENING, a collapse to baseline aborts.
-      // (Threshold set from pre-ceremony baseline; simplified here.)
-    });
-    return () => sub.current && sub.current.remove();
+    let sub = null;
+    (async () => {
+      try {
+        await MagSensor.setUpdateIntervalForType(
+          require('expo-sensors').SensorTypes.magnetometerUncalibrated, 100);
+      } catch (e) {}
+      try { await MagSensor.setUpdateInterval(100); } catch (e) {}
+      sub = MagSensor.addListener(d => {
+        const m = Math.sqrt(d.x*d.x + d.y*d.y + d.z*d.z);
+        magRef.current = m; setMag(m);
+        waveBuf.current = [...waveBuf.current.slice(1), m];
+      });
+    })();
+    const iv = setInterval(() => setWave([...waveBuf.current]), 100);
+    return () => { if (sub) sub.remove(); clearInterval(iv); };
   }, []);
 
-  // Two-sided ceremony (v2): commit-reveal with the stone.
-  // 1. POST /ceremony/new -> {commit, stone_id}   2. POST /ceremony/challenge {A}
-  // 3. listen (stone fires HMAC("mag"||A||B))       4. GET /ceremony/reveal -> {B}
-  // 5. check SHA256(B)==commit, bits==expectedBits2  6. sign receipt (A,B,...)
-  async function beginCeremony() {
-    // F1: attempt cap — 3 failed verifications → 60 s cooldown.
-    if (Date.now() < cooldownUntil) {
-      setStatus('Cooldown — too many failed verifications. Wait '
-        + Math.ceil((cooldownUntil - Date.now()) / 1000) + 's.');
-      return;
-    }
-    // B2: A is derived from the intent digest (cheap variant).
-    const intentHex = intentDigest(MOCK_TX);
-    const A = deriveA(intentHex);
-    const aHex = hexOf(A);
-    challengeHex.current = aHex;
-    setResult(null);
-    setPhase(PHASE.SENDING);
-    samples.current = [];
-
-    let commit = null, B = null;
-
-    if (demoMode) {
-      B = randChallenge();                // simulated stone nonce
-      commit = sha256Hex(B);
-      setStatus('Demo mode: simulated stone, two-sided. Intent bound: '
-        + intentHex.slice(0, 12) + '…');
-    } else {
-      try {
-        // 1. new ceremony — stone commits to B
-        let r = await fetch(STONE_URL + '/ceremony/new', { method: 'POST' });
-        if (!r.ok) throw new Error('new: HTTP ' + r.status);
-        let j = await r.json();
-        commit = j.commit;
-        setStatus('Stone committed (' + String(j.stone_id) + '). Sending nonce A…');
-        // 2. challenge — phone sends A, stone fires after 1 s
-        r = await fetch(STONE_URL + '/ceremony/challenge', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ A: aHex }),
-        });
-        if (!r.ok) throw new Error('challenge: HTTP ' + r.status);
-      } catch (e) {
-        setPhase(PHASE.REFUSED);
-        setStatus('Stone unreachable: ' + e.message + '. Signer refuses without the ceremony.');
-        setResult({ ok: false, error: 'stone unreachable' });
-        return;
-      }
-    }
-
-    setPhase(PHASE.LISTENING);
-    setStatus('Listening — hold the phone at the stone. Pull away to kill the ceremony.');
-    setTimeout(() => verifyTwoSided(A, B, commit, intentHex, demoMode), CEREMONY_MS);
+  function randChallenge() {
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    return b;
   }
-
+  function hexOf(b) {
+    return Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
+  }
   function hexToBytes(h) {
     const b = new Uint8Array(h.length / 2);
     for (let i = 0; i < b.length; i++) b[i] = parseInt(h.substr(i * 2, 2), 16);
     return b;
   }
-
-  // B2: the receipt binds the payment INTENT. A is derived from the intent
-  // digest, so a live ceremony for one payment can't authorize another.
-  // intent = SHA256("TAP1|" + recursively canonicalized FULL tx JSON)
-  // — canon.js (2026-10-10 17:57Z drop, Cadence): the SAME file signer.js
-  // requires. Sorts keys at every depth, REFUSES (throws) on
-  // undefined/NaN/functions instead of silently dropping — closes
-  // nested-canon break #4 (Aperture 14:51Z). Byte-agreement between the
-  // two sides is load-bearing: a mixed pair breaks legit.
   function intentDigest(tx) {
     return sha256Hex(new TextEncoder().encode(intentOf(tx)));
   }
@@ -207,9 +195,72 @@ export default function App() {
     return hexToBytes(sha256Hex(m).slice(0, 32));
   }
 
-  // F1: forge math pinned — exact 16-bit match 2^-16; ≤1-bit tolerance
-  // 17/65536 ≈ 1/3855. Tolerance pinned at ≤1 bit; 3 failed verifications
-  // → 60 s cooldown. "Can't fake" earns its bytes.
+  async function beginCeremony() {
+    setResult(null);
+    setSealBits(new Array(32).fill(null));
+    setSealDigest(''); setSealId('');
+    samples.current = [];
+    const intentHex = intentDigest(MOCK_TX);
+    const A = deriveA(intentHex);
+    const B = randChallenge();
+    const commit = sha256Hex(B);
+    setPhase(PHASE.SENDING);
+    setStatus('Challenge sent. Stone, fire when ready.');
+    if (!demoMode) {
+      try {
+        const r = await fetch(STONE_URL + '/ceremony/new', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ commit, A: hexOf(A) }),
+        });
+        if (!r.ok) return refuse('stone-unreachable');
+      } catch (e) { return refuse('stone-unreachable'); }
+      try {
+        const r2 = await fetch(STONE_URL + '/ceremony/challenge', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ A: hexOf(A) }),
+        });
+        if (!r2.ok) return refuse('challenge-rejected');
+      } catch (e) { return refuse('challenge-failed'); }
+    }
+    // Record while the stone fires.
+    const t0 = Date.now();
+    const recIv = setInterval(() => {
+      samples.current.push({ t: Date.now() - t0, mag: magRef.current });
+    }, 50);
+    setPhase(PHASE.LISTENING);
+    setStatus('Listening — hold the phone at the stone. Pull away to kill the ceremony.');
+    setTimeout(() => {
+      clearInterval(recIv);
+      // Animate the ring lighting as the pattern resolves.
+      animateBits(A, B);
+      verifyTwoSided(A, B, commit, intentHex, demoMode);
+    }, CEREMONY_MS);
+  }
+
+  // The ring lights bit-by-bit as the keyed pattern resolves — the tap
+  // drawing itself. Uses the locally-computed expected bits (no key leak:
+  // the phone already holds the key).
+  function animateBits(A, B) {
+    const exp = expectedBits2(DEMO_KEY, A, B, N_PAY);
+    let i = 0;
+    const iv = setInterval(() => {
+      i += 2;
+      setSealBits(exp.slice(0, 32).map((b, j) => j < Math.min(i, 32) ? b : null));
+      if (i >= 32) clearInterval(iv);
+    }, 90);
+  }
+
+  function synthDemoTrace2(A, B) {
+    // Synthetic trace matching expectedBits2 — demo only.
+    const exp = expectedBits2(DEMO_KEY, A, B, N_PAY);
+    const slots = stuffBits(exp);
+    const trace = [];
+    let t = 0;
+    for (let s = 0; s < 8; s++) { trace.push({ t, mag: 45 + (s % 2 ? 60 : -20) }); t += SYMBOL_MS; }
+    for (const b of slots) { trace.push({ t, mag: 45 + (b ? 90 : -30) }); t += SYMBOL_MS; }
+    return trace;
+  }
+
   const [fails, setFails] = useState(0);
   const [cooldownUntil, setCooldownUntil] = useState(0);
 
@@ -217,18 +268,11 @@ export default function App() {
     setPhase(PHASE.VERIFYING);
     setStatus('Verifying keyed pattern…');
     const trace = isDemo ? synthDemoTrace2(A, B) : samples.current;
-    // B1 (re-check): FREEZE the recording BEFORE the reveal — SHA256 of the
-    // raw trace + end timestamp. A fake stone holding A and B must never see
-    // B before the measured response is frozen.
     const frozenAt = Date.now();
     const frozenHash = sha256Hex(new TextEncoder().encode(
       JSON.stringify({ t: trace.map(s => [s.t, Math.round(s.mag * 100)]), end: frozenAt })));
-    // detect preamble + slice raw slots (F2 re-check: slot-domain, no de-stuff)
     const r = detectCeremony(trace, { keyBytes: DEMO_KEY, challengeBytes: A });
-    if (!r.found) {
-      return refuse('no-preamble', r.confidence);
-    }
-    // 4. reveal B (or use the simulated one), check commit binding
+    if (!r.found) return refuse('no-preamble', r.confidence);
     let bBytes = B;
     if (!isDemo) {
       try {
@@ -238,43 +282,30 @@ export default function App() {
         bBytes = hexToBytes(jj.B);
       } catch (e) { return refuse('reveal-failed', r.confidence); }
     }
-    if (sha256Hex(bBytes) !== commit) {
-      return refuse('commit-mismatch (stone ground B)', r.confidence);
-    }
-    // F2 (re-check, slot-domain): stuff the expected T with the stone's
-    // deterministic rule, compare slot-by-slot against the frozen raw trace.
-    // No de-stuffing — a single slot error stays a single slot error.
-    // Forge bound ≤ (1+L)/2^16, L ∈ {16,17,18}.
+    if (sha256Hex(bBytes) !== commit) return refuse('commit-mismatch (stone ground B)', r.confidence);
     const exp16 = expectedBits2(DEMO_KEY, A, bBytes, N_PAY);
     const expSlots = stuffBits(exp16);
-    // Length-mismatch nit (Aperture 3c41a3f1): if the frozen trace has fewer
-    // slots than stuff(T) (slip, dropped slot), HARD REJECT. Slot-by-slot
-    // ≤1 tolerance covers flips only; a short trace is not a flip.
     if (r.bits.length < expSlots.length) {
-      return refuse('length-mismatch (trace has ' + r.bits.length +
-        ' slots, need ' + expSlots.length + ')', 0);
+      return refuse('length-mismatch (trace has ' + r.bits.length + ' slots, need ' + expSlots.length + ')', 0);
     }
     const det = r.bits.slice(0, expSlots.length);
-    // sanity flag only: the stone never emits 9 consecutive ones
-    let maxRun = 0, run = 0;
-    for (const b of det) { run = b ? run + 1 : 0; maxRun = Math.max(maxRun, run); }
     let mismatch = 0;
-    for (let i = 0; i < expSlots.length; i++) {
-      if (det[i] !== expSlots[i]) mismatch++;
-    }
-    if (mismatch > 1) {
-      return refuse('hmac-mismatch', 1 - mismatch / expSlots.length);
-    }
+    for (let i = 0; i < expSlots.length; i++) if (det[i] !== expSlots[i]) mismatch++;
+    if (mismatch > 1) return refuse('hmac-mismatch', 1 - mismatch / expSlots.length);
     const receiptHex = hexOf(A) + hexOf(bBytes);
-    // B2: the attestation binds the intent digest — the signer will refuse
-    // to sign any tx whose intent doesn't match.
+    // The seal's inner constellation is seeded by THIS ceremony's digest.
+    // Same key, different tap, different art — mathematically.
+    const digest = sha256Hex(new TextEncoder().encode(receiptHex));
+    setSealDigest(digest);
+    setSealId(digest.slice(0, 8).toUpperCase());
+    setSealBits(exp16.slice(0, 32));
     signer.attest({ challengeHex: receiptHex, intentDigest: intentHex, confidence: 1 });
     setPhase(PHASE.ATTESTED);
     setStatus('Two-sided attested (≤1 bit flip accepted, commit bound, intent bound). Signing…');
     const s = signer.sign({ tx: MOCK_TX, challengeHex: receiptHex, intentDigest: intentHex });
     if (s.ok) {
       setPhase(PHASE.SIGNED);
-      setStatus('SIGNED. Receipt: A=' + hexOf(A).slice(0, 12) + '… B=' + hexOf(bBytes).slice(0, 12) + '…');
+      setStatus('SIGNED. Seal #' + digest.slice(0, 8).toUpperCase() + ' — this art never existed before this tap.');
       setResult({ ok: true, signature: s.signature });
     } else {
       setPhase(PHASE.REFUSED);
@@ -287,14 +318,9 @@ export default function App() {
     signer.invalidate(reason);
     const f = fails + 1;
     setFails(f);
-    // F1: 3 failed verifications → 60 s cooldown.
-    if (f >= 3) {
-      setCooldownUntil(Date.now() + 60000);
-      setFails(0);
-    }
+    if (f >= 3) { setCooldownUntil(Date.now() + 60000); setFails(0); }
     setPhase(PHASE.REFUSED);
-    setStatus('Ceremony FAILED (' + reason + '). Signer refuses.'
-      + (f >= 3 ? ' Cooldown 60s.' : ''));
+    setStatus('Ceremony FAILED (' + reason + '). Signer refuses.' + (f >= 3 ? ' Cooldown 60s.' : ''));
     setResult({ ok: false, error: reason, confidence });
   }
 
@@ -308,179 +334,115 @@ export default function App() {
   function reset() {
     setPhase(PHASE.IDLE);
     setResult(null);
+    setSealBits(new Array(32).fill(null));
+    setSealDigest(''); setSealId('');
     setStatus('Idle. Review the transaction, then approve with the stone.');
   }
 
-  // ---- Bump link bench tool (ADDITIVE, UNBENCHED, not part of attestation) ----
-  // Bench flow (Aperture 19:05:31Z ask (c)): phone flat on stone. The stone
-  // operator types `kicks <nonce>` in the serial console; the app captures
-  // 8 s of accelerometer and verifies the kick times against the SAME nonce.
-  // This tool measures the link — it never gates signing (bench-tune pending).
-  const [bumpNonce, setBumpNonce] = useState(() => {
-    // H2: CSPRNG for bump nonce too.
-    const b = new Uint8Array(4);
-    crypto.getRandomValues(b);
-    return String(new DataView(b.buffer).getUint32(0, false));
-  });
-  const [bumpBusy, setBumpBusy] = useState(false);
-  const [bumpReport, setBumpReport] = useState(null);
-
-  async function runBumpBench() {
-    const nonce = Number(bumpNonce) >>> 0;
-    setBumpBusy(true);
-    setBumpReport({ line: 'capturing 8 s — type `kicks ' + nonce + '` on the stone NOW…', ok: null });
-    try {
-      const { samples } = await captureAccel(8000, 10);
-      const r = verifyBump(samples, nonce);
-      setBumpReport({
-        ok: r.ok,
-        line: (r.ok ? 'MATCH ' : 'REFUSED ') +
-          (r.kicks ? r.kicks.length + ' kicks detected, ' : '') +
-          (r.matched !== undefined ? r.matched + '/6 matched, maxErr ' + r.maxErrMs + ' ms, ' + r.extra + ' extra' : r.reason) +
-          '\nschedule: ' + (r.schedule || scheduleFromNonce(nonce)).join(','),
-      });
-    } catch (e) {
-      setBumpReport({ ok: false, line: 'capture failed: ' + (e && e.message) });
-    }
-    setBumpBusy(false);
-  }
-
   const sim = simulateTx(MOCK_TX);
-  const phaseColor = {
-    [PHASE.SIGNED]: '#4ade80', [PHASE.REFUSED]: '#f87171', [PHASE.ABORTED]: '#f87171',
-    [PHASE.ATTESTED]: '#e8a33d', [PHASE.LISTENING]: '#e8a33d',
-  }[phase] || '#ece1c9';
-
-  // Ritual voice — the mystic register. No jargon on screen.
-  const phaseLabel = {
-    [PHASE.SENDING]: 'Calling…',
-    [PHASE.LISTENING]: 'Listen.',
-    [PHASE.VERIFYING]: 'Reading…',
-    [PHASE.ATTESTED]: 'Sealed…',
-  }[phase] || '';
-  const phaseSub = {
-    [PHASE.LISTENING]: 'Hold your phone to the stone.',
-    [PHASE.VERIFYING]: 'The field carries the key.',
-  }[phase] || '';
-  const shortAddr = MOCK_TX.to.slice(0, 4) + '…' + MOCK_TX.to.slice(-3);
+  const waveMax = Math.max(60, ...wave);
+  const waveMin = Math.min(30, ...wave);
+  const phaseWord = {
+    [PHASE.IDLE]: 'Idle', [PHASE.SENDING]: 'Sending', [PHASE.LISTENING]: 'Listening',
+    [PHASE.VERIFYING]: 'Reading', [PHASE.ATTESTED]: 'Attested',
+    [PHASE.SIGNED]: 'Verified', [PHASE.REFUSED]: 'Blocked', [PHASE.ABORTED]: 'Aborted',
+  }[phase];
+  const [artSrc, artName] = ARTS[artIdx];
 
   return (
-    <View style={styles.root}>
-      <View style={styles.header}>
-        <Text style={styles.mark}>◉</Text>
-        <Text style={styles.wordmark}>TAP</Text>
+    <ScrollView style={s.root} contentContainerStyle={s.pad}>
+      {/* Art picker — tap through the pieces */}
+      <Text style={s.kicker}>CANVAS</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.strip}>
+        {ARTS.map(([src, name], i) => (
+          <TouchableOpacity key={name} onPress={() => setArtIdx(i)} style={s.thumbW}>
+            <Image source={src} style={[s.thumb, i === artIdx && s.thumbOn]} />
+            <Text style={[s.thumbT, i === artIdx && s.thumbTOn]}>{name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* The seal: art + ceremony data composited */}
+      <View style={s.sealFrame}>
+        <Image source={artSrc} style={s.sealArt} resizeMode="cover" />
+        <View style={s.sealDim} />
+        <View style={s.sealOver}>
+          <TapSeal bits={sealBits} digestHex={sealDigest} phase={phase} mag={mag} />
+        </View>
+        {sealId !== '' && (
+          <Text style={s.sealId}>SEAL #{sealId}</Text>
+        )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
-        {demoMode && (
-          <View style={styles.demoPill}>
-            <Text style={styles.demoPillT}>demo mode — no stone</Text>
-          </View>
-        )}
+      {/* Field readout */}
+      <Text style={s.field}>{mag === null ? '—' : mag.toFixed(1)} µT</Text>
+      <View style={s.wave}>
+        {wave.map((v, i) => {
+          const h = 4 + ((v - waveMin) / Math.max(1, waveMax - waveMin)) * 56;
+          const hot = phase === PHASE.LISTENING || phase === PHASE.VERIFYING;
+          return <View key={i} style={[s.bar, { height: h,
+            backgroundColor: hot ? '#e8a33d' : '#57503f' }]} />;
+        })}
+      </View>
 
-        <Text style={styles.askLabel}>Agent wants to send</Text>
-        <Text style={styles.amount}>{MOCK_TX.amountSol.toFixed(2)} SOL</Text>
-        <Text style={styles.address}>to {shortAddr}</Text>
+      {/* Phase + status */}
+      <Text style={s.phase}>{phaseWord}</Text>
+      <Text style={s.status}>{status}</Text>
 
-        <View style={styles.meaningCard}>
-          {sim.map((l, i) => <Text key={i} style={styles.meaning}>• {l}</Text>)}
-        </View>
+      {/* Transaction */}
+      <View style={s.tx}>
+        <Text style={s.txA}>{MOCK_TX.action}</Text>
+        {sim.map((l, i) => <Text key={i} style={s.txL}>· {l}</Text>)}
+      </View>
 
-        {/* The field between two poles — the visual heart */}
-        <Text style={styles.poleTop}>◉ stone</Text>
-        <View style={styles.wave}>
-          {wave.map((v, i) => (
-            <View key={i} style={[
-              styles.waveBar,
-              {
-                height: Math.max(3, Math.min(110, (v - 30) / 970 * 110)),
-                backgroundColor: v > 200 ? '#e8a33d' : 'rgba(154,140,109,.35)',
-              }
-            ]} />
-          ))}
-        </View>
-        <Text style={styles.poleBottom}>◉ you</Text>
-        <Text style={styles.meterLabel}>
-          {mag === null ? '—' : mag.toFixed(0) + ' µT'}
-        </Text>
-
-        {phaseLabel !== '' && (
-          <Text style={[styles.phase, { color: phaseColor }]}>{phaseLabel}</Text>
-        )}
-        {phaseSub !== '' && (
-          <Text style={styles.phaseSub}>{phaseSub}</Text>
-        )}
-        {phaseSub === '' && <Text style={styles.status}>{status}</Text>}
-
-        {result && (
-          <View style={[styles.verdict, result.ok ? styles.verdictOk : styles.verdictBad]}>
-            <Text style={[styles.verdictWord, { color: result.ok ? '#4ade80' : '#f87171' }]}>
-              {result.ok ? 'Verified.' : 'Blocked.'}
-            </Text>
-            <Text style={styles.receipt}>
-              {result.signature
-                ? result.signature.slice(0, 32) + '…'
-                : (result.error || '')}
-            </Text>
-          </View>
-        )}
-
-        {phase === PHASE.IDLE ? (
-          <TouchableOpacity style={styles.tapButton} onPress={beginCeremony}>
-            <Text style={styles.tapButtonText}>TAP TO APPROVE</Text>
-          </TouchableOpacity>
-        ) : (phase === PHASE.SIGNED || phase === PHASE.REFUSED || phase === PHASE.ABORTED) ? (
-          <TouchableOpacity style={styles.ghostButton} onPress={reset}>
-            <Text style={styles.ghostButtonText}>Start over</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.killButton} onPress={abort}>
-            <Text style={styles.killButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity onPress={() => setDemoMode(!demoMode)} style={styles.demoToggle}>
-          <Text style={styles.demoToggleText}>
-            {demoMode ? '● demo mode on' : '○ demo mode'}
-          </Text>
+      {/* Action */}
+      {phase === PHASE.IDLE || phase === PHASE.SIGNED || phase === PHASE.REFUSED || phase === PHASE.ABORTED ? (
+        <TouchableOpacity style={s.btn} onPress={phase === PHASE.IDLE ? beginCeremony : reset}>
+          <Text style={s.btnT}>{phase === PHASE.IDLE ? 'TAP TO APPROVE' : 'AGAIN'}</Text>
         </TouchableOpacity>
-      </ScrollView>
-    </View>
+      ) : (
+        <TouchableOpacity style={[s.btn, s.btnKill]} onPress={abort}>
+          <Text style={s.btnT}>PULL AWAY</Text>
+        </TouchableOpacity>
+      )}
+      {result && result.ok && (
+        <Text style={s.sig}>sig {String(result.signature).slice(0, 20)}…</Text>
+      )}
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 54, paddingBottom: 8 },
-  mark: { color: '#e8a33d', fontSize: 22, marginRight: 8 },
-  wordmark: { color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: 8 },
-  body: { padding: 24, paddingBottom: 60, alignItems: 'stretch' },
-  demoPill: { alignSelf: 'center', backgroundColor: 'rgba(232,163,61,.12)', borderColor: 'rgba(232,163,61,.4)', borderWidth: 1, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14, marginBottom: 16 },
-  demoPillT: { color: '#e8a33d', fontSize: 11, fontWeight: '600' },
-  askLabel: { color: '#8a8a8a', fontSize: 15, textAlign: 'center', marginTop: 8 },
-  amount: { color: '#fff', fontSize: 64, fontWeight: '800', textAlign: 'center', letterSpacing: -1, marginTop: 4 },
-  address: { color: '#8a8a8a', fontSize: 14, textAlign: 'center', marginTop: 4, fontFamily: 'Menlo' },
-  meaningCard: { backgroundColor: 'rgba(255,255,255,.04)', borderRadius: 16, padding: 16, marginTop: 20, marginBottom: 8 },
-  meaning: { color: '#d4d4d4', fontSize: 13, lineHeight: 20, marginBottom: 4 },
-  poleTop: { color: '#e8a33d', fontSize: 12, textAlign: 'center', marginTop: 20, letterSpacing: 3, fontFamily: 'Menlo' },
-  wave: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', height: 120, marginTop: 6 },
-  waveBar: { width: 4, marginHorizontal: 1.5, borderRadius: 2 },
-  poleBottom: { color: '#ece1c9', fontSize: 12, textAlign: 'center', marginTop: 6, letterSpacing: 3, fontFamily: 'Menlo' },
-  meterLabel: { color: '#8a8a8a', fontSize: 12, textAlign: 'center', marginTop: 8, fontFamily: 'Menlo' },
-  phase: { fontSize: 34, fontWeight: '400', textAlign: 'center', marginTop: 22, fontFamily: 'Georgia', fontStyle: 'italic' },
-  phaseSub: { color: '#9a8c6d', fontSize: 13, textAlign: 'center', marginTop: 8, fontFamily: 'Georgia', fontStyle: 'italic' },
-  status: { color: '#b0b0b0', fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 18, fontFamily: 'Menlo' },
-  verdict: { borderRadius: 20, padding: 32, marginTop: 22, alignItems: 'center', borderWidth: 2 },
-  verdictOk: { borderColor: 'rgba(74,222,128,.5)', backgroundColor: 'rgba(74,222,128,.06)' },
-  verdictBad: { borderColor: 'rgba(248,113,113,.5)', backgroundColor: 'rgba(248,113,113,.06)' },
-  verdictWord: { fontSize: 44, fontFamily: 'Georgia', fontStyle: 'italic' },
-  receipt: { color: '#8a8a8a', fontSize: 11, fontFamily: 'Menlo', marginTop: 12, textAlign: 'center' },
-  tapButton: { backgroundColor: '#e8a33d', borderRadius: 18, padding: 22, alignItems: 'center', marginTop: 28 },
-  tapButtonText: { color: '#000', fontWeight: '800', fontSize: 19, letterSpacing: 2 },
-  ghostButton: { borderColor: 'rgba(255,255,255,.2)', borderWidth: 1, borderRadius: 18, padding: 16, alignItems: 'center', marginTop: 28 },
-  ghostButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  killButton: { backgroundColor: 'rgba(248,113,113,.12)', borderColor: 'rgba(248,113,113,.4)', borderWidth: 1, borderRadius: 18, padding: 16, alignItems: 'center', marginTop: 28 },
-  killButtonText: { color: '#f87171', fontWeight: '600', fontSize: 15 },
-  demoToggle: { alignSelf: 'center', marginTop: 26, padding: 10 },
-  demoToggleText: { color: '#555', fontSize: 12 },
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#0a0908' },
+  pad: { padding: 16, paddingBottom: 48 },
+  kicker: { color: '#8a6f3f', fontSize: 11, fontWeight: '800', letterSpacing: 4, marginBottom: 10 },
+  strip: { marginBottom: 14, marginHorizontal: -16, paddingHorizontal: 16 },
+  thumbW: { marginRight: 12, alignItems: 'center' },
+  thumb: { width: 64, height: 64, borderRadius: 8, opacity: 0.45, borderWidth: 1, borderColor: '#241f16' },
+  thumbOn: { opacity: 1, borderColor: '#e8a33d' },
+  thumbT: { color: '#57503f', fontSize: 9, fontWeight: '700', letterSpacing: 1, marginTop: 4 },
+  thumbTOn: { color: '#e8a33d' },
+  sealFrame: { position: 'relative', height: 340, borderRadius: 16, overflow: 'hidden',
+    backgroundColor: '#000', borderWidth: 1, borderColor: '#241f16', marginBottom: 12 },
+  sealArt: { position: 'absolute', width: '100%', height: '100%', opacity: 0.55 },
+  sealDim: { position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(10,9,8,0.35)' },
+  sealOver: { position: 'absolute', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  sealId: { position: 'absolute', bottom: 10, width: '100%', textAlign: 'center',
+    color: '#ffd98a', fontFamily: 'Menlo', fontSize: 12, letterSpacing: 3 },
+  field: { color: '#e8a33d', fontFamily: 'Menlo', fontSize: 22, textAlign: 'center', marginBottom: 6 },
+  wave: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center',
+    height: 64, gap: 2, marginBottom: 14 },
+  bar: { width: 4, borderRadius: 2 },
+  phase: { color: '#ece1c9', fontSize: 30, fontWeight: '900', textAlign: 'center',
+    letterSpacing: -0.5, marginBottom: 4 },
+  status: { color: '#9a917f', fontFamily: 'Georgia', fontStyle: 'italic', fontSize: 15,
+    textAlign: 'center', lineHeight: 21, marginBottom: 14, paddingHorizontal: 12 },
+  tx: { backgroundColor: '#12100c', borderRadius: 12, padding: 14, marginBottom: 14,
+    borderWidth: 1, borderColor: '#241f16' },
+  txA: { color: '#ece1c9', fontSize: 19, fontWeight: '800', marginBottom: 8 },
+  txL: { color: '#9a917f', fontFamily: 'Menlo', fontSize: 12, lineHeight: 18 },
+  btn: { backgroundColor: '#e8a33d', borderRadius: 14, padding: 18, alignItems: 'center' },
+  btnKill: { backgroundColor: '#3a1a1a' },
+  btnT: { color: '#0a0908', fontSize: 18, fontWeight: '900', letterSpacing: 2 },
+  sig: { color: '#57503f', fontFamily: 'Menlo', fontSize: 11, textAlign: 'center', marginTop: 10 },
 });
