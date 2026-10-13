@@ -27,7 +27,7 @@ const TABS = [
 
 const STEPS = [
   ['wifi-outline', 'Open on home Wi-Fi', 'Load TAP once while you have internet. It stays loaded after that.'],
-  ['document-text-outline', 'Read the payment', 'Your agent asks to pay. TAP shows who, how much and which token, decoded from the real transaction bytes rather than from the agent\'s description.'],
+  ['document-text-outline', 'Read the payment', 'Your agent asks to pay. TAP shows who, how much and which token. (In this demo the payment is a sample.)'],
   ['swap-horizontal-outline', 'Join the stone', 'Settings → Wi-Fi → "TAP-stone". Then come back here.'],
   ['phone-portrait-outline', 'Phone flat on the stone', 'The stone pulses a one-time magnetic code. Your phone listens.'],
   ['finger-print-outline', 'Approve', 'Code matches → the phone co-signs this exact payment, once. Anything else is refused, with the reason.'],
@@ -58,12 +58,13 @@ function Start({ go }) {
 }
 
 const ART = [
-  [require('./assets/art/seal.png'), 'SEAL', 'Grown from a real on-chain receipt. Same vow, same picture. Aperture.'],
+  [require('./assets/art/seal-1080.png'), 'SEAL', 'Grown from a real on-chain receipt. Same vow, same picture. Aperture.'],
+  [require('./assets/art/vowfield-1080.png'), 'Vow Field', 'Lodestone × Aperture.'],
   [require('./assets/art/poster.jpg'), 'The Stone', 'Poster in Lodestone\'s ad style.'],
   [require('./assets/art/forge.jpg'), 'Forge', 'Every attack fails for a named reason.'],
   [require('./assets/art/want.jpg'), 'Want', 'The agent wants. The vault waits.'],
   [require('./assets/art/braid.png'), 'Ceremony Braid', 'Phone nonce × stone nonce, hashed into a 4-strand braid. Neither side can know it alone. Cadence.'],
-  [require('./assets/art/atlas.jpg'), 'Atlas', 'The whole system as one map.'],
+  [require('./assets/art/atlas.jpg'), 'Kick Rhythm Ring', 'The stone\'s pulse schedule, drawn as a ring.'],
 ];
 
 function Art() {
@@ -76,7 +77,7 @@ function Art() {
       <SealRing h={420} />
       {ART.map(([src, t, d]) => (
         <View key={t} style={s.card}>
-          <Image source={src} style={{ width: width - 66, height: (width - 66) * 0.62, borderRadius: 10 }} resizeMode="cover" />
+          <Image source={src} style={{ width: width - 66, height: width - 66, borderRadius: 10, backgroundColor: '#000' }} resizeMode="contain" />
           <Text style={s.stepT}>{t}</Text>
           <Text style={s.stepD}>{d}</Text>
         </View>
@@ -86,8 +87,8 @@ function Art() {
 }
 
 const PROOF = [
-  ['close-circle', C.amber, 'Agent alone → refused on chain', 'MissingRequiredSignature. The agent tried to drain the vault without the phone.', '2h859F33XqKQ'],
-  ['checkmark-circle', C.green, 'Agent + tap → lands, with receipt', 'Memo TAP1:… is a fingerprint of exactly what you approved.', 'rJRY77eU'],
+  ['close-circle', C.amber, 'Agent alone → refused on chain', 'MissingRequiredSignature. The agent tried to drain the vault without the phone.', '2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD'],
+  ['checkmark-circle', C.green, 'Agent + tap → lands, with receipt', 'Memo TAP1:… is a fingerprint of exactly what you approved.', 'rJRY77eUMuy4bPkZ8sWhRQBqDDfokhsUyhuE14CBHeTZz87WiYehvGg7FkavguYUDdkHD7gKMyJaBXyXNRtfALT'],
 ];
 
 function Proof() {
@@ -95,11 +96,12 @@ function Proof() {
     <ScrollView contentContainerStyle={s.pad}>
       <Text style={s.kicker}>PROOF</Text>
       <Text style={s.h2}>Don't trust us. Check the chain.</Text>
-      {PROOF.map(([icon, col, t, d]) => (
-        <View key={t} style={s.card}>
+      {PROOF.map(([icon, col, t, d, sig]) => (
+        <TouchableOpacity key={t} style={s.card} onPress={() => Linking.openURL(EX(sig))}>
           <Text style={s.stepT}><Ionicons name={icon} size={18} color={col} />  {t}</Text>
           <Text style={s.stepD}>{d}</Text>
-        </View>
+          <Text style={[s.stepD, { color: '#2fd27a' }]}>Open on Solana Explorer →</Text>
+        </TouchableOpacity>
       ))}
       <TouchableOpacity style={s.ghost} onPress={() => Linking.openURL('https://github.com/jiggy-cadence/tap')}>
         <Text style={s.ghostT}><Ionicons name="logo-github" size={16} />  Open source: jiggy-cadence/tap</Text>
