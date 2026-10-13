@@ -6,6 +6,15 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import Ceremony from './CeremonyScreen';
+import { WebView } from 'react-native-webview';
+const SEAL_RING = 'https://muse.ai/s/seal-field-ring-qy6hnvxmbxiqxm';
+function SealRing({ h }) {
+  return (
+    <View style={{ height: h, borderRadius: 16, overflow: 'hidden', borderColor: '#2a251c', borderWidth: 1, marginBottom: 16, backgroundColor: '#000' }}>
+      <WebView source={{ uri: SEAL_RING }} style={{ flex: 1, backgroundColor: '#000' }} javaScriptEnabled domStorageEnabled allowsInlineMediaPlayback />
+    </View>
+  );
+}
 
 const C = { bg: '#0d0b08', card: '#17140f', line: '#2a251c', ink: '#efe9dc', dim: '#9a917f', green: '#2fd27a', amber: '#e8b04a' };
 const EX = s => `https://explorer.solana.com/tx/${s}?cluster=devnet`;
@@ -30,6 +39,7 @@ function Start({ go }) {
     <ScrollView contentContainerStyle={s.pad}>
       <Text style={s.kicker}>TAP</Text>
       <Text style={s.h1}>Your agent can want.{'\n'}<Text style={{ color: C.green }}>It can't spend without you.</Text></Text>
+      <SealRing h={300} />
       <Text style={s.body}>Big payments need you, live, at the stone. Here is the whole flow:</Text>
       {STEPS.map(([icon, t, d], i) => (
         <View key={t} style={s.step}>
@@ -62,6 +72,8 @@ function Art() {
     <ScrollView contentContainerStyle={s.pad}>
       <Text style={s.kicker}>GALLERY</Text>
       <Text style={s.h2}>Every tap leaves its own mark.</Text>
+      <Text style={s.stepT}>The TAP Seal: Seal Field Ring</Text>
+      <SealRing h={420} />
       {ART.map(([src, t, d]) => (
         <View key={t} style={s.card}>
           <Image source={src} style={{ width: width - 66, height: (width - 66) * 0.62, borderRadius: 10 }} resizeMode="cover" />
