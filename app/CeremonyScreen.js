@@ -53,7 +53,7 @@ const ARTS = [
 // bits: array of 32 (1 | 0 | null). digestHex: hex string seeding the inner
 // pattern. phase + mag drive the living state.
 function TapSeal({ bits, digestHex, phase, mag }) {
-  const N = 32, R = 104, C = 130, BOX = 260;
+  const N = N_PAY, R = 104, C = 130, BOX = 260;
   const segs = [];
   for (let i = 0; i < N; i++) {
     const a = (i / N) * Math.PI * 2 - Math.PI / 2;
@@ -142,7 +142,7 @@ export default function CeremonyScreen() {
   const [demoMode, setDemoMode] = useState(true);
   const [artIdx, setArtIdx] = useState(0);
   // Seal state: the ceremony's own data, drawn live.
-  const [sealBits, setSealBits] = useState(new Array(32).fill(null));
+  const [sealBits, setSealBits] = useState(new Array(N_PAY).fill(null));
   const [sealDigest, setSealDigest] = useState('');
   const [sealId, setSealId] = useState('');
   const [mag, setMag] = useState(null);
@@ -197,7 +197,7 @@ export default function CeremonyScreen() {
 
   async function beginCeremony() {
     setResult(null);
-    setSealBits(new Array(32).fill(null));
+    setSealBits(new Array(N_PAY).fill(null));
     setSealDigest(''); setSealId('');
     samples.current = [];
     const intentHex = intentDigest(MOCK_TX);
@@ -245,8 +245,8 @@ export default function CeremonyScreen() {
     let i = 0;
     const iv = setInterval(() => {
       i += 2;
-      setSealBits(exp.slice(0, 32).map((b, j) => j < Math.min(i, 32) ? b : null));
-      if (i >= 32) clearInterval(iv);
+      setSealBits(exp.slice(0, N_PAY).map((b, j) => j < Math.min(i, N_PAY) ? b : null));
+      if (i >= N_PAY) clearInterval(iv);
     }, 90);
   }
 
@@ -298,7 +298,7 @@ export default function CeremonyScreen() {
     const digest = sha256Hex(new TextEncoder().encode(receiptHex));
     setSealDigest(digest);
     setSealId(digest.slice(0, 8).toUpperCase());
-    setSealBits(exp16.slice(0, 32));
+    setSealBits(exp16.slice(0, N_PAY));
     signer.attest({ challengeHex: receiptHex, intentDigest: intentHex, confidence: 1 });
     setPhase(PHASE.ATTESTED);
     setStatus('Two-sided attested (≤1 bit flip accepted, commit bound, intent bound). Signing…');
@@ -334,7 +334,7 @@ export default function CeremonyScreen() {
   function reset() {
     setPhase(PHASE.IDLE);
     setResult(null);
-    setSealBits(new Array(32).fill(null));
+    setSealBits(new Array(N_PAY).fill(null));
     setSealDigest(''); setSealId('');
     setStatus('Idle. Review the transaction, then approve with the stone.');
   }
