@@ -6,12 +6,10 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import Ceremony from './CeremonyScreen';
-import { WebView } from 'react-native-webview';
-const SEAL_RING = 'https://muse.ai/s/seal-field-ring-qy6hnvxmbxiqxm';
 function SealRing({ h }) {
   return (
     <View style={{ height: h, borderRadius: 16, overflow: 'hidden', borderColor: '#2a251c', borderWidth: 1, marginBottom: 16, backgroundColor: '#000' }}>
-      <WebView source={{ uri: SEAL_RING }} style={{ flex: 1, backgroundColor: '#000' }} javaScriptEnabled domStorageEnabled allowsInlineMediaPlayback />
+      <Image source={require('./assets/art/seal-1080.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
     </View>
   );
 }
@@ -144,17 +142,17 @@ export default function App() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   pad: { padding: 20, paddingBottom: 40 },
-  kicker: { color: C.green, letterSpacing: 3, fontSize: 12, fontWeight: '700', marginBottom: 8 },
-  h1: { color: C.ink, fontSize: 30, fontWeight: '800', lineHeight: 36, marginBottom: 12 },
-  h2: { color: C.ink, fontSize: 22, fontWeight: '800', marginBottom: 16 },
-  body: { color: C.dim, fontSize: 15, lineHeight: 21, marginBottom: 18 },
+  kicker: { color: C.green, fontFamily: 'Menlo-Bold', letterSpacing: 4, fontSize: 11, marginBottom: 10 },
+  h1: { color: C.ink, fontFamily: 'AvenirNext-Heavy', fontSize: 32, lineHeight: 36, marginBottom: 12, letterSpacing: -0.5 },
+  h2: { color: C.ink, fontFamily: 'AvenirNext-Heavy', fontSize: 23, marginBottom: 16, letterSpacing: -0.3 },
+  body: { color: C.dim, fontFamily: 'AvenirNext-Regular', fontSize: 15, lineHeight: 22, marginBottom: 18 },
   step: { flexDirection: 'row', gap: 12, backgroundColor: C.card, borderColor: C.line, borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 10 },
   num: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' },
   numT: { color: C.bg, fontWeight: '800' },
-  stepT: { color: C.ink, fontSize: 16, fontWeight: '700', marginTop: 4 },
-  stepD: { color: C.dim, fontSize: 14, lineHeight: 20, marginTop: 4 },
+  stepT: { color: C.ink, fontFamily: 'AvenirNext-DemiBold', fontSize: 16, marginTop: 4 },
+  stepD: { color: C.dim, fontFamily: 'AvenirNext-Regular', fontSize: 14, lineHeight: 20, marginTop: 4 },
   cta: { backgroundColor: C.green, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 10 },
-  ctaT: { color: C.bg, fontSize: 17, fontWeight: '800' },
+  ctaT: { color: C.bg, fontFamily: 'AvenirNext-Heavy', fontSize: 17, letterSpacing: 0.5 },
   card: { backgroundColor: C.card, borderColor: C.line, borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 14 },
   ghost: { borderColor: C.line, borderWidth: 1, borderRadius: 14, padding: 14, alignItems: 'center', marginTop: 6 },
   ghostT: { color: C.ink, fontSize: 15 },
