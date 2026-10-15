@@ -112,7 +112,7 @@ function sha256Hex(bytes) {
 const SYMBOL_MS = 250;
 const PREAMBLE = [1,0,1,0,1,0,1,0];
 const N_PRE = PREAMBLE.length;
-const N_PAY = 16; // matches solenoid_two_sided.ino firePattern: 16 HMAC bits (pinned 2026-10-13)
+const N_PAY = 32; // matches firmware/solenoid_two_sided_32bit_gated.ino firePattern: 32 HMAC bits (Jiggy 2026-10-15). Banner: "v2 (two-sided, 32-bit)"
 
 function median(a) {
   const s = [...a].sort((x,y)=>x-y);

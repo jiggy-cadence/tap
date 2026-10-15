@@ -297,7 +297,7 @@ void setup() {
   server.onNotFound([]() { server.send(404, "application/json", F("{\"error\":\"not found\"}")); });
   server.begin();
 
-  Serial.println(F("\nTAP knot-stone v2 (two-sided)"));
+  Serial.println(F("\nTAP knot-stone v2 (two-sided, 32-bit)"));  // 2026-10-15: banner names the bit width so the flashed build is identifiable
   Serial.print(F("AP ")); Serial.print(AP_SSID);
   Serial.print(F(" IP ")); Serial.println(WiFi.softAPIP());
   Serial.print(F("stone_id ")); Serial.println(stoneId);
