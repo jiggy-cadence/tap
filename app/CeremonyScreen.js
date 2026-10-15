@@ -16,7 +16,9 @@ import { intentOf } from './canon';
 
 const DEMO_KEY = new Uint8Array([224,2,97,129,114,230,111,106,127,76,18,64,180,47,95,84,78,12,125,56,255,81,117,6,117,52,131,214,39,70,31,112]);
 const STONE_URL = 'http://192.168.4.1';
-const CEREMONY_MS = (8 + N_PAY) * SYMBOL_MS + 1500;
+// 2026-10-15: stone waits 1000 ms, then 8 preamble + up to N_PAY+4 stuffed slots; +2.5 s margin. At 32 bits the old
+// (8+N_PAY)*250+1500 = 11.5 s window ended BEFORE a stuffed ceremony did (up to 12 s) and clipped honest taps.
+const CEREMONY_MS = (8 + N_PAY + 4) * SYMBOL_MS + 2500;
 
 const PHASE = {
   IDLE: 'idle', SENDING: 'sending-challenge', LISTENING: 'listening',
