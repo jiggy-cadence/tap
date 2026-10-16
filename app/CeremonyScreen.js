@@ -211,8 +211,12 @@ export default function CeremonyScreen() {
     samples.current = [];
     const intentHex = intentDigest(MOCK_TX);
     const A = deriveA(intentHex);
+    // B and its commit come from the STONE (it rolls B from esp_random before seeing A).
+    // 2026-10-16 (SPEC G1): the phone used to mint its own B/commit and ignore the stone's reply,
+    // then compare the stone's revealed B against the phone's commit, so every real ceremony refused
+    // 'commit-mismatch' while demo mode (no stone) passed. Demo keeps a local B; live reads the stone's.
     const B = randChallenge();
-    const commit = sha256Hex(B);
+    let commit = sha256Hex(B);
     setPhase(PHASE.SENDING);
     setStatus('Challenge sent. Stone, fire when ready.');
     if (!demoMode) {
@@ -222,6 +226,9 @@ export default function CeremonyScreen() {
           body: JSON.stringify({ commit, A: hexOf(A) }),
         });
         if (!r.ok) return refuse('stone-unreachable');
+        const nj = await r.json();
+        if (!nj || !/^[0-9a-f]{64}$/i.test(nj.commit || '')) return refuse('stone-commit-missing');
+        commit = nj.commit.toLowerCase();   // bind to the STONE's commitment, made before A was sent
       } catch (e) { return refuse('stone-unreachable'); }
       try {
         const r2 = await fetch(STONE_URL + '/ceremony/challenge', {
