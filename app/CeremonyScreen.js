@@ -199,6 +199,12 @@ export default function CeremonyScreen() {
   }
 
   async function beginCeremony() {
+    // 2026-10-15 (claims audit): cooldownUntil was SET after 3 failures but never READ, so the
+    // "lockout" did nothing and an attacker could retry at full speed. Enforce it here.
+    if (Date.now() < cooldownUntil) {
+      setStatus(`Locked after 3 failed ceremonies. Try again in ${Math.ceil((cooldownUntil - Date.now()) / 1000)}s.`);
+      return;
+    }
     setResult(null);
     setSealBits(new Array(N_PAY).fill(null));
     setSealDigest(''); setSealId('');

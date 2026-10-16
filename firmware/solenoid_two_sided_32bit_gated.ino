@@ -185,7 +185,7 @@ static void handleChallenge() {
 
   server.send(200, "application/json", F("{\"ack\":true}"));
   Serial.print(F("CHALLENGE A=")); Serial.println(aHex);
-  Serial.print(F("DIGEST ")); printHex(digest, 32);
+  // 2026-10-15: DIGEST print REMOVED — it is the answer the phone must hear; printing it hands it to anyone on serial (OVERLOOKED #1 regression).
 
   delay(1000);           // phone starts listening
   firePattern(digest);
@@ -241,7 +241,7 @@ static void ceremonyOneSided(const uint8_t c16[16]) {
   memcpy(msg + 3, c16, 16);
   uint8_t digest[32];
   hmac_sha256(sessionKey, 32, msg, 19, digest);
-  Serial.print(F("DIGEST ")); printHex(digest, 32);
+  // 2026-10-15: DIGEST print REMOVED — it is the answer the phone must hear; printing it hands it to anyone on serial (OVERLOOKED #1 regression).
   firePattern(digest);
 }
 
