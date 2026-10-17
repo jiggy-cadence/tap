@@ -4,7 +4,7 @@
 
 *simulated stone; devnet txs in evidence/*
 
-Your agent can spend small amounts inside a daily allowance (a Squads v4 spending limit, enforced on chain). Anything bigger, to a new wallet, or a drain needs you to tap your phone on the stone (ESP32 + solenoid).
+Your agent can spend small amounts inside a daily allowance (a Squads v4 spending limit, enforced on chain). Anything bigger, to a new wallet, or a drain needs a second co-signature from your phone, which a tap on the stone (ESP32 + solenoid) is meant to unlock. The stone's magnet and bump checks are still simulated; see Honest scope.
 
 Colosseum World's Fair 2026 submission. Built during the entry period (Sep 14 – Oct 12, 2026).
 
@@ -46,7 +46,7 @@ const drain = await send({ kind: 'drain', to: 'Mallory11111111111111111111111111
 Rebuild the README demo GIF (chrome + ffmpeg): `docs/render-demo-gif.sh`.
 
 ## Honest scope
-- Proves liveness at the stone (a fresh tap for this transaction), not physical distance.
+- Designed to prove liveness at the stone (a fresh tap for this transaction), not physical distance. The checks behind that are simulated today (next two lines), so no stone tap is verified on hardware yet.
 - Magnet nonce is simulated (Fair mode: 16-bit + CRC-4, 3.84 s, lockout 3 fails / 60 s; 32-bit mode available). Not hardware-verified.
 - Bump check (`stone/bump.js`, 13 tests) is **simulation-only** until the phone-on-stone bench run.
 - On-chain proof is **agent + phone** 2-of-2, not stone + phone.
@@ -81,7 +81,7 @@ Honest limits of the bump link:
   an added link on top of the magnet nonce, not a standalone proof.
 
 ## vault/ (Cadence)
-`vault/` is Cadence's tap-vault: the code that produced the devnet evidence. The two devnet transactions, [2h859F…](https://explorer.solana.com/tx/2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD?cluster=devnet) (agent alone, refused) and [2ik5wV…](https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet) (ceremony, agent + phone co-sign), came from `vault/e2e-devnet.js`. `stone/signer.js` is the demo stand-in used by the local demo, not the code behind those transactions. Tests: `cd vault && npm install && npm test` → **113** pass (25+22+9+8+10+31+2+6: vault, canon, shamir, executors, squads, cosign, squads-type, keybox; counted 2026-10-11). Stone signer/policy/nonce/bump: **70** (21+27+9+13). Runtime keys go to `vault/devnet-keys.json`, which is git-ignored.
+`vault/` is Cadence's tap-vault: the code that produced the devnet evidence. The two devnet transactions, [2h859F…](https://explorer.solana.com/tx/2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD?cluster=devnet) (agent alone, refused) and [2ik5wV…](https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet) (agent + phone co-sign; the transaction proves 2 signatures, not a stone tap), came from `vault/e2e-devnet.js`. `stone/signer.js` is the demo stand-in used by the local demo, not the code behind those transactions. Tests: `cd vault && npm install && npm test` → **113** pass (25+22+9+8+10+31+2+6: vault, canon, shamir, executors, squads, cosign, squads-type, keybox; counted 2026-10-11). Stone signer/policy/nonce/bump: **70** (21+27+9+13). Runtime keys go to `vault/devnet-keys.json`, which is git-ignored.
 
 ## Don't trust us: verify a tap yourself
 
