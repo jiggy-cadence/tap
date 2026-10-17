@@ -1,6 +1,6 @@
 # Receipts
 
-Every claim in my Anthropic Fellows application, with a link you can check yourself. Measured on Fri Oct 16, 2026 (CT). If something isn't proven, it's listed under "What is simulated or unproven" at the bottom.
+Every claim in my Anthropic Fellows application, with a link you can check yourself. Measured on Fri Oct 16, 2026 (CT); honest-evals, Tau Ceti and the saved evidence hashes re-checked Sat Oct 17, 2026 (CT). If something isn't proven, it's listed under "What is simulated or unproven" at the bottom.
 
 ## 1. TAP on Solana devnet
 
@@ -9,9 +9,11 @@ Repo: https://github.com/jiggy-cadence/tap (MIT). The raw RPC responses are save
 | What | Signature | Slot | Result |
 |---|---|---|---|
 | Agent acting alone, over the limit | [`2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD`](https://explorer.solana.com/tx/2h859F33kaLQ7RUtHXpWNdxz5UDmcTZUbyQzcyT3GrXKeX65b1UMAoFvxwfsJkYh2GNNkABJTaJqKmB2rVYobMrD?cluster=devnet) | 509637420 | **Refused**: `InstructionError [0, MissingRequiredSignature]` ([evidence/2h859F33.json](evidence/2h859F33.json)) |
-| Stone tap + phone co-signature | [`2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq`](https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet) | 509637436 | **Landed**: `err: null`, 2 signatures ([evidence/2ik5wVv3.json](evidence/2ik5wVv3.json)) |
+| Agent + phone co-signature | [`2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq`](https://explorer.solana.com/tx/2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnTKzKrorjHHYpccjNgBMyhbjFtHq?cluster=devnet) | 509637436 | **Landed**: `err: null`, 2 signatures ([evidence/2ik5wVv3.json](evidence/2ik5wVv3.json)) |
 
-Live re-check: on Oct 16, 2026 I tried to re-fetch both from `https://api.devnet.solana.com`. The RPC was **unreachable from my machine** (HTTP 000, timed out), so I could not re-verify them live today. The explorer links above, plus the saved responses in `evidence/`, are the receipts. Devnet RPC nodes can also prune old transactions, so if a live lookup misses, check the saved JSON.
+The second transaction proves two signatures (agent + phone). It does not prove a stone tap: the stone's magnet and bump checks are still simulated (section 6).
+
+The receipts are the saved RPC transaction data and screenshots in [`evidence/`](evidence/) (`getTransaction` responses captured 2026-10-10, with SHA-256 checksums in [evidence/README.md](evidence/README.md)). On Oct 16 and Oct 17, 2026 I tried to re-fetch both live from `https://api.devnet.solana.com` and it timed out from my machine both days, so they have not been re-verified live by RPC since capture. Devnet RPC nodes can also prune old transactions, so if a live lookup misses, check the saved JSON.
 
 ## 2. Tests
 
@@ -32,15 +34,15 @@ To reproduce: `git clone https://github.com/jiggy-cadence/tap && cd tap && bash 
 
 ## 3. honest-evals
 
-Repo: https://github.com/weiscadence/honest-evals. Branch `main` is at [`0ce1c73`](https://github.com/weiscadence/honest-evals/commit/0ce1c73823c4513a727e71de5f22d5eb0c51beed). The repo's default branch is still `master` (`d688569`), so use the `main` link.
+Repo: https://github.com/weiscadence/honest-evals (default branch `main`). `main` is at [`ddc8d3a`](https://github.com/weiscadence/honest-evals/commit/ddc8d3a565dc1ffac050d399ea4868c64e81f1c8).
 
-- I made a fresh clone at `0ce1c73` and ran `pip install -e . && pytest`: **163 passed**.
-- Our own reviews broke it. Fooled checks got the ledger, the rerun filter and the canary to pass when they shouldn't. The fixes are public: [`c556d5c` Harden ledger, rerun, canary; honest README numbers](https://github.com/weiscadence/honest-evals/commit/c556d5c1d035af6cd6933d4c9d331a82f27bc928) and [`0ce1c73` Close Lodestone review holes](https://github.com/weiscadence/honest-evals/commit/0ce1c73823c4513a727e71de5f22d5eb0c51beed). Both are on `main`.
+- I made a fresh clone at `ddc8d3a` on Oct 17, 2026 and ran `pip install -e . && pytest`: **178 passed, 0 failed**.
+- Our own reviews broke it. Fooled checks got the ledger, the rerun filter and the canary to pass when they shouldn't. The fixes are public: [`c556d5c` Harden ledger, rerun, canary; honest README numbers](https://github.com/weiscadence/honest-evals/commit/c556d5c1d035af6cd6933d4c9d331a82f27bc928) and [`0ce1c73` Close Lodestone review holes](https://github.com/weiscadence/honest-evals/commit/0ce1c73823c4513a727e71de5f22d5eb0c51beed). Both are on `main`, followed by [`dda36d6`](https://github.com/weiscadence/honest-evals/commit/dda36d6), [`ef3e0d3`](https://github.com/weiscadence/honest-evals/commit/ef3e0d3) and [`ddc8d3a`](https://github.com/weiscadence/honest-evals/commit/ddc8d3a565dc1ffac050d399ea4868c64e81f1c8), which close later re-test survivors.
 - The **6 of 16 vs 3 of 77** figure comes out of [`examples/selection_effect.py`](https://github.com/weiscadence/honest-evals/blob/main/examples/selection_effect.py) on the fixture [`examples/fixtures/claim_outcomes.jsonl`](https://github.com/weiscadence/honest-evals/blob/main/examples/fixtures/claim_outcomes.jsonl). It prints 6/16 = 37.5% (Wilson 95% 18.5–61.4) and 3/77 = 3.9% (Wilson 95% 1.3–10.8), and it runs the canary first. These are one agent's records, with n=16 on one side. Depending on how errors and drift are counted, the gap runs from 2.6x to 28.9x, and at the strictest definition it isn't significant (Fisher p=0.068). The README reports every definition.
 
 ## 4. Tau Ceti (Lean 4)
 
-The `gh search prs --repo TauCetiProject/TauCeti --author weiscadence --merged` query returns **16 merged PRs**:
+The `gh search prs --repo TauCetiProject/TauCeti --author weiscadence --merged` query returns **16 merged PRs** (re-counted Oct 17, 2026):
 
 | PR | Title |
 |---|---|
@@ -63,7 +65,12 @@ The `gh search prs --repo TauCetiProject/TauCeti --author weiscadence --merged` 
 
 ## 5. Lean model of TAP
 
-There's a Lean 4 model of the TAP protocol. It builds with **one unfinished lemma** (`half_life_monotone`), and its freshness and binding theorems **rest on an HMAC-SHA256 axiom**. **The commit to this repo is pending.** I'll add a link here once it's public.
+Source: [`lean/` on branch `app-v2`](https://github.com/jiggy-cadence/tap/tree/app-v2/lean), README at commit [`f5da71b`](https://github.com/jiggy-cadence/tap/blob/f5da71b7c52f0ad1c16bf8c6a5ca526f29a4948d/lean/README.md). Compiled by Lodestone; source reviewed by Cadence and Aperture.
+
+- **One unfinished lemma:** `half_life_monotone` (one `sorry`).
+- **Named axioms:** `hmac_sha256`, and the signature axioms (`sig_unforgeable`, `sig_correct` and the abstract key/sign/verify types). Freshness and binding rest on `hmac_sha256`.
+- **Deniability is a placeholder statement,** not a proof: `deniable` holds by `rfl`, and three related theorems conclude only `True`.
+- The 529/2^32 counting bound is for the 32-bit target spec, not the deployed 16-bit build.
 
 ## 6. What is simulated or unproven
 
