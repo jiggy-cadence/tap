@@ -1,6 +1,6 @@
 # Receipts
 
-Every claim in my Anthropic Fellows application, with a link you can check yourself. Measured on Fri Oct 16, 2026 (CT); honest-evals, Tau Ceti and the saved evidence hashes re-checked Sat Oct 17, 2026 (CT). If something isn't proven, it's listed under "What is simulated or unproven" at the bottom.
+Every claim in my Anthropic Fellows application, with a link you can check yourself. Measured on Fri Oct 16, 2026 (CT); honest-evals, Tau Ceti and the saved evidence hashes re-checked Sat Oct 17, 2026 (CT). Tests, saved evidence, Tau Ceti and the Lean build re-checked Mon Oct 19, 2026 (CT). If something isn't proven, it's listed under "What is simulated or unproven" at the bottom.
 
 ## 1. TAP on Solana devnet
 
@@ -13,7 +13,9 @@ Repo: https://github.com/jiggy-cadence/tap (MIT). The raw RPC responses are save
 
 The second transaction proves two signatures (agent + phone). It does not prove a stone tap: the stone's magnet and bump checks are still simulated (section 6).
 
-The receipts are the saved RPC transaction data and screenshots in [`evidence/`](evidence/) (`getTransaction` responses captured 2026-10-10, with SHA-256 checksums in [evidence/README.md](evidence/README.md)). On Oct 16 and Oct 17, 2026 I tried to re-fetch both live from `https://api.devnet.solana.com` and it timed out from my machine both days, so they have not been re-verified live by RPC since capture. Devnet RPC nodes can also prune old transactions, so if a live lookup misses, check the saved JSON.
+The receipts are the saved RPC transaction data and screenshots in [`evidence/`](evidence/) (`getTransaction` responses captured 2026-10-10, with SHA-256 checksums in [evidence/README.md](evidence/README.md)). On Oct 16 and Oct 17, 2026 I tried to re-fetch both live from `https://api.devnet.solana.com` and it timed out from my machine both days, so they have not been re-verified live by RPC since capture. On Oct 19, 2026 `api.devnet.solana.com` again failed from my machine (TLS error, then timeout). A public devnet node that did answer (genesis `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`, which is devnet) keeps history only from slot 511144736, after both transactions, so it returns null for them. That is pruning, not a missing transaction, and it is still not a live re-verification. Devnet RPC nodes prune old transactions, so if a live lookup misses, check the saved JSON.
+
+Offline check of the saved files: `node evidence/evidence.test.js` re-hashes every file in `evidence/` against its published sha256, re-reads slot, fee, blockTime, error and signature count from the saved JSON, recomputes the public digests, and checks them against the table above. On Oct 19, 2026: 10/10 pass. Each check has a canary (a flipped byte or a wrong value must fail it).
 
 ## 2. Tests
 
@@ -31,6 +33,8 @@ The repo has one gate: [`check.sh`](check.sh). It needs no network and no keys. 
 | **Total** | **444, 0 failing** |
 
 To reproduce: `git clone https://github.com/jiggy-cadence/tap && cd tap && bash check.sh`
+
+Re-run Mon Oct 19, 2026 on `main` at `2641586` (only PROOF.md and README.md differ from `5dcb29e`): `ALL GREEN (18 suites)`, exit 0. `check.sh` does not print every count (vault prints only its last suite, and the receipt, seal and vowfield suites print none), so I ran those directly: vault 25+22+9+8+10+31+2+6 = 113, receipt 9, seal 18, vowfield 12. Totals match the table: 444. Later commits add one suite (`evidence/evidence.test.js`, 10 tests), so `check.sh` on current `main` prints `ALL GREEN (19 suites)`.
 
 ## 3. honest-evals
 
@@ -65,7 +69,7 @@ The `gh search prs --repo TauCetiProject/TauCeti --author weiscadence --merged` 
 
 ## 5. Lean model of TAP
 
-Source: [`lean/` on branch `app-v2`](https://github.com/jiggy-cadence/tap/tree/app-v2/lean), README at commit [`f5da71b`](https://github.com/jiggy-cadence/tap/blob/f5da71b7c52f0ad1c16bf8c6a5ca526f29a4948d/lean/README.md). Compiled by Lodestone; source reviewed by Cadence and Aperture.
+Source: [`lean/` on branch `app-v2`](https://github.com/jiggy-cadence/tap/tree/app-v2/lean), README at commit [`f5da71b`](https://github.com/jiggy-cadence/tap/blob/f5da71b7c52f0ad1c16bf8c6a5ca526f29a4948d/lean/README.md). Compiled by Lodestone; source reviewed by Cadence and Aperture. Aperture also compiled it independently on Oct 19, 2026 at `app-v2` `a6ce29f` (`lean/` is unchanged through `f03a13c`): Lean v4.35.0, Mathlib v4.35.0 from the cache. `lake build Tapcore.Basic Tapcore.Probability Tapcore.DualReceipt` is green (3045 jobs). A plain `lake build` fails as shipped, because the lakefile's default target needs a `Main.lean` that isn't in the repo. The compiler's count of real `sorry`s is Basic 0, Probability 0, DualReceipt 1. `#print axioms` for `hammingBall_card` and `targetSet_card` gives only `propext`, `Classical.choice` and `Quot.sound`.
 
 - **One unfinished lemma:** `half_life_monotone` (one `sorry`).
 - **Named axioms:** `hmac_sha256`, and the signature axioms (`sig_unforgeable`, `sig_correct` and the abstract key/sign/verify types). Freshness and binding rest on `hmac_sha256`.

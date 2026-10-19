@@ -6,9 +6,9 @@
 
 Your agent can spend small amounts inside a daily allowance (a Squads v4 spending limit, enforced on chain). Anything bigger, to a new wallet, or a drain needs a second co-signature from your phone, which a tap on the stone (ESP32 + solenoid) is meant to unlock. The stone's magnet and bump checks are still simulated; see Honest scope.
 
-**What's proven, what isn't** (every claim with its receipt: [PROOF.md](https://github.com/jiggy-cadence/tap/blob/proof-page/PROOF.md))
+**What's proven, what isn't** (every claim with its receipt: [PROOF.md](PROOF.md))
 - **Proven on Solana devnet, not mainnet:** the agent alone, over the limit, is refused on chain ([`2h859F33…`](evidence/README.md), `MissingRequiredSignature`); agent + phone co-sign lands ([`2ik5wVv3…`](evidence/README.md), 2 signatures). Saved RPC transaction data and screenshots, with sha256, are in [`evidence/`](evidence/).
-- **Tests:** `bash check.sh` prints `ALL GREEN (18 suites)` on a fresh clone, with no network and no keys.
+- **Tests:** `bash check.sh` prints `ALL GREEN (19 suites)` on a fresh clone, with no network and no keys. One suite, `evidence/evidence.test.js`, re-hashes the saved devnet evidence and checks it against PROOF.md offline.
 - **Not proven yet:** a stone tap on real hardware. The magnet nonce and bump checks are simulated, and the on-chain proof is agent + phone, not stone + phone.
 
 Colosseum World's Fair 2026 submission. Built during the entry period (Sep 14 – Oct 12, 2026).

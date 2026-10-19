@@ -7,7 +7,7 @@ run() { local name="$1"; shift; if out=$("$@" 2>&1); then printf '  ✓ %-28s %s
 [ -d stone/node_modules ] || [ ! -f stone/package.json ] || (cd stone && npm install --silent >/dev/null 2>&1)
 echo "vault"; run "npm test" bash -c "cd vault && npm test --silent"
 echo "stone"; for f in stone/*.test.js; do run "$f" node "$f"; done
-echo "sdk / expo / page"; for f in sdk/*.test.js expo/*.test.js page/*.test.js; do run "$f" node "$f"; done
+echo "sdk / expo / page / evidence"; for f in sdk/*.test.js expo/*.test.js page/*.test.js evidence/*.test.js; do run "$f" node "$f"; done
 echo "firmware host tests"; if command -v gcc >/dev/null; then run "firmware/test/run.sh" sh firmware/test/run.sh; else echo "  - gcc missing, skipped"; fi
 run "firmware/bench self-test" python3 firmware/bench/make_requests.py --self-test
 echo "secret-print guard v2 (deny-by-default: any print sink x secret-ish name; public outputs allowlisted)"
