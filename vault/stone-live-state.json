@@ -1,0 +1,13 @@
+{
+  "multisig": {
+    "multisig": "8urBZUNTDKWfjo99FakQGAV5WX42H7ybNLm2MMuZ7AFC",
+    "vault": "AYfM9CQLAyYcJkDWhKxyjJbX8XYDcJF6s3Sxi4jLWPAf",
+    "spendingLimit": "FVL58BM7u4ocBxoYrBcqMmcd2BWd5sYiaJ4BgyBJz7K1",
+    "allowanceLamports": 50000000,
+    "links": {
+      "multisigCreate": "https://explorer.solana.com/tx/49Cucu3pwLFLF173xKvN8tjezA8KLn481d3HHh4YeW7vT4YiTcZTRCUzcHWPnXYuiuhDdSe2WtaA7oKcpJUufXm5?cluster=devnet",
+      "vaultFunded": "https://explorer.solana.com/tx/2z4tj3W1dnegxRSjUo1fJcnYUzmmFwMuYC3qHgMSDEvjev4p1pyaknijwoek935G9BuwYpyAisDuJScw6wE1ejAo?cluster=devnet",
+      "spendingLimitAdded": "https://explorer.solana.com/tx/5dHwTEm2WToY3cUNndFZoxUiRP4Fa41MPuo52HqhwLtPtmwgHJ8cL3S3ATNER7YoEPmv9akGHYvH4M2eQTcxMXLM?cluster=devnet"
+    }
+  }
+}

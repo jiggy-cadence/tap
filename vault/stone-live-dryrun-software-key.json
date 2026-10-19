@@ -1,0 +1,19 @@
+{
+  "NOTE": "DRY RUN with a SOFTWARE Ed25519 key standing in for the stone. NOT a stone. Proves the devnet path only.",
+  "stonePubkey_SOFTWARE": "3d6349ae16765cd531d44009d2ea033e82f49643a52b91a4ca33c6d0980ebca8",
+  "result": {
+    "at": "2026-10-19T08:55:30.425Z",
+    "transactionIndex": 2,
+    "stonePubkey": "3d6349ae16765cd531d44009d2ea033e82f49643a52b91a4ca33c6d0980ebca8",
+    "stoneCounter": "1",
+    "stoneSig": "42a8676e05387f792d4da1e274391cc438ab77762f98a0d2a0760f386ec70af87b855e501a55a156fa5536ed3e3789c1f76d8403c6f896404c2e5e1a3cf71301",
+    "stoneMsg": "5441502d73746f6e652d76310102758b9ef30f8b3032785ff9c3018c59ea7d364056dde73df0f8c058e74401d8ebe13f17cb8a127278f34d2650b8531da6a4d8ca34d28dc6ca87efe18ea382d162e62980f89ddfddfd33c5052271636952e6d42c870257af33ae506a1e054d022301000000000000003d6349ae16765cd531d44009d2ea033e82f49643a52b91a4ca33c6d0980ebca8",
+    "receipt": "TAPSTONE1:4d61d3af1a9c2755",
+    "proposal": "https://explorer.solana.com/tx/51SpxzvTfxdxySPjp2kKuJ5EA9G4wj9Y8iKSrCvKgMHvLTjbDqvepKVHHABW4jvuRnDMqZHHZd8cfKM95Vxzn4p1?cluster=devnet",
+    "phoneApproved": "https://explorer.solana.com/tx/5iJkrRnbKQ4ZDTzRV24UCBg35wGb3fEjNTG7FvuuBVw8bP9iyd123CAAZ2V9XjoEvgeFQzyKRWR3iXziEnGLy5ns?cluster=devnet",
+    "executed": "https://explorer.solana.com/tx/KTMMVrTjkHCyApqya9EuwqQXt7kM5qqwKrMH3FvXM6jdnJKbns48zL2zYGsz2qrDjkgqPPpwYrDiRQH6b5dExj8?cluster=devnet",
+    "slot": 512744520,
+    "magnetPatternChecked": false,
+    "note": "stone line relayed by hand over serial; phone-side checks done by this script"
+  }
+}
