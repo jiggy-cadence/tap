@@ -2,14 +2,18 @@ import Mathlib.Data.Nat.Choose.Basic
 
 /-
   TAP Core — Minimal Verified Foundation
-  Formalizes ~/workspace/tap/tap-core-minimal-spec.md
+  Formalizes the TAP core spec (six steps below). The prose spec is not
+  in this repo; the statements in this file are the spec of record.
 
   Six steps. Every security property is either [PROVEN], [ASSUMED], or [TESTED].
 
   Proof architecture (2026-10-14: three [ASSUMED-BITVEC] axioms promoted to [PROVEN]):
-  - [ASSUMED-CRYPTO]: HMAC-SHA256 is a PRF and collision-resistant.
-    Standard assumptions; breaking them breaks the internet.
-    These are the ONLY two axioms. Everything else is proven.
+  - [ASSUMED-CRYPTO]: HMAC-SHA256 is a PRF. Modelled by ONE axiom in this
+    file, `hmac_sha256` (opaque function); the PRF conclusion is stated as
+    documentation, not as a Lean axiom. (The old collision-resistance axiom
+    was removed on 2026-10-14; see Probability.lean.)
+    Repo-wide there are 10 named axioms: this one plus 9 signature-scheme
+    axioms in DualReceipt.lean. See lean/README.md for the table.
   - [PROVEN]: freshness, binding, Hamming geometry (incl. triangle inequality),
     challenge/amount encoding injectivity — real proofs, no unfinished goals.
 -/
@@ -177,8 +181,8 @@ noncomputable def attest (K : SessionKey) (C : Challenge) (bits : MagBits)
 
 /-- Hamming distance: number of positions where the two words differ.
     Concrete, computable definition. Symmetry is [PROVEN] below;
-    the triangle inequality is [ASSUMED-BITVEC] (textbook math,
-    no security content — same category as the injectivity axioms).
+    the triangle inequality is [PROVEN] below too (it was an
+    [ASSUMED-BITVEC] axiom until 2026-10-14).
     [TESTED]: decode-vs-distance measured on hardware. -/
 def hammingDist {n : Nat} (a b : Vector Bool n) : Nat :=
   (a.toList.zip b.toList).countP (fun p : Bool × Bool => p.1 != p.2)
@@ -388,7 +392,9 @@ theorem bilateral_far (c₁ c₂ : Vector Bool 32) (observed : Vector Bool 32)
     of_decide_eq_true (by simpa [verify] using h₂)
   exact ball_disjoint c₁ c₂ observed (by omega) e₁ e₂
 
-/-- Property 5 [PROVEN]: Deniability.
+/-- Property 5 [PROVEN by `rfl`, weak]: Deniability. The Lean statement only
+    says anyone holding K can compute the attestation; it is not a full
+    deniability proof.
     HMAC is symmetric: either party holding K could have produced any
     attestation. No transferable proof of origin.
     
@@ -458,7 +464,7 @@ theorem replay_bound (K : SessionKey) (C : Challenge) (observed : MagBits)
 
 -- Property 1 (unforgeability): the game is formal below; the
 -- probabilistic conclusion is [ASSUMED-CRYPTO] (PRF security).
--- See ~/workspace/tap/tap-core-minimal-spec.md for the statement.
+-- The game and reduction are stated in Lean just below.
 
 /-
   UNFORGEABILITY — the game, the reduction, and what's assumed.

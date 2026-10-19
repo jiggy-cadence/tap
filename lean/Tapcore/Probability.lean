@@ -30,6 +30,9 @@ import Mathlib.Data.Fintype.Powerset
   - acceptance_prob_cards: PROVEN — 529/2^32 as card ratio
   - acceptance_prob: PROVEN — uniformOfFinset wrapper around acceptance_prob_cards
   - hmac_collision_resistant axiom: KILLED (was mathematically impossible)
+  Status (2026-10-19): deployed-config section below (radius 1, n bits):
+  targetSet1_card, hammingBall1_card, acceptance_prob_radius1 PROVEN,
+  i.e. the (1+n)/2^n bound. No unfinished goals in this file.
 -/
 
 open scoped Classical

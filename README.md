@@ -14,6 +14,14 @@ Your agent can spend small amounts inside a daily allowance (a Squads v4 spendin
 
 Colosseum World's Fair 2026 submission. Built during the entry period (Sep 14 – Oct 12, 2026).
 
+## What TAP adds over a plain multisig
+
+A 2-of-2 Squads multisig already refuses an agent that signs alone. That is all the devnet `MissingRequiredSignature` shows, and it isn't new. What TAP adds is what the second signer checks before it signs, and (once hardware runs) where it has to be:
+
+- **The phone decodes and checks the exact transaction.** `vault/cosign.js` parses the message bytes and co-signs only if they match the intent the person approved: amount, mint, source, destination, decimals, fee payer, exactly one `TransferChecked`, the tap-receipt memo, single-use taps and durable-nonce rules. `stone/decoder.js` writes the plain-English line shown at the prompt, and `stone/policy.js` / `sdk/tap-guard.js` decide what needs a tap (allowance, per-tx limit, unknown recipient).
+- **Refusal tests, counted:** `vault/cosign.test.js` has 31 tests. **23** hand the phone a tampered or unsafe transaction and check it refuses (amount swapped, even by 1 base unit; destination, mint or source swapped; decimals lie; fee-payer swap; a second transfer smuggled in; trailing bytes; a v0 message; a forged or missing memo; a replayed tap; an unapproved durable nonce; garbage bytes, and more). The other 8 check honest transactions still sign. `expo/stone-gate.test.js` has 49 tests for the stone gate: **22** end in a `REFUSED_*` code (stone absent, bad or forged signature, key swap, wrong tx, wrong tap, wrong cluster, replayed counter, stale, wrong magnet pattern, counter write failed) and 3 more fail closed (no active cluster, no pairing, corrupt pairing). All run in Node; none has run in Expo Go.
+- **The stone gate is pending hardware.** Stage 1 (phone co-signs only if the stone signed this exact transaction after a touch) is built and host-tested. It has not run on the stone or a real phone, and there is no on-chain evidence of a stone tap yet.
+
 ## Layout
 - `sdk/` — `tap-guard.js` agent wrapper (devnet/demo): under-allowance passes through; over-limit returns `{status:'needs_tap', decoderLine}` and waits for `approve()`.
 - `stone/` — Node signer + policy (allowance, domain tag, Solana message-byte signing, plain-English decoder), simulated magnet-nonce channel, tests, `demo.js`, `squads-devnet.js` (devnet only).

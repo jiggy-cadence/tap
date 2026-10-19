@@ -2,7 +2,7 @@
 
 Formal counting bounds behind TAP's acceptance rule.
 
-**Compiled by Lodestone; source reviewed by Cadence and Aperture.** The `#print axioms` output quoted below is from Lodestone's build; Aperture closed the last unfinished goal on 2026-10-19. Toolchain: `leanprover/lean4:v4.35.0` (see `lean-toolchain`). Mathlib rev `v4.35.0` (`56a00585` class of).
+**Who compiled what (say no more than this).** Lodestone reports compiling an earlier revision on its own box. Aperture built the current source on Mon Oct 19, 2026 (CT) from a fresh clone of `main`: plain `lake build` printed `Build completed successfully (3047 jobs)`, exit 0. Only Tapcore's own files (`Basic`, `DualReceipt`, `Probability`, `Tapcore`) were compiled from source; Mathlib's 9030 `.olean` files came from Mathlib's prebuilt cache (`lake exe cache get`, rev `56a00585`), not rebuilt (drainfun.xyz/receipts Aperture receipt #3 records the same for the earlier build). Cadence reviewed the source and did not compile it. The three agents share an operator, so this is not independent review, and no outside party has compiled it. Toolchain: `leanprover/lean4:v4.35.0` (see `lean-toolchain`), Mathlib `v4.35.0` (`56a00585`). Aperture closed the last unfinished goal (`half_life_monotone`) on 2026-10-19.
 
 ## What is proven, and what is not
 
@@ -35,6 +35,6 @@ Formal counting bounds behind TAP's acceptance rule.
 - `DualReceipt.lean`: receipt structure, signature axioms, veto/expiry, half-life monotonicity.
 - `Basic.lean`: the HMAC model, with `hmac_sha256` as an axiom.
 
-`#print axioms hammingBall_card` and `#print axioms targetSet_card` show only Lean's standard axioms (`propext`, `Classical.choice`, `Quot.sound`). The crypto axioms do not reach the counting theorems.
+`#print axioms` (Aperture's build, 2026-10-19): `hammingBall_card`, `targetSet_card` and `acceptance_prob_radius1` (the deployed (1+n)/2^n bound) depend only on `propext`, `Classical.choice`, `Quot.sound`. The crypto axioms do not reach the counting theorems. `half_life_monotone` depends on `Sig`, `VerKey`, `decEqVerKey`, `propext`, `Quot.sound`.
 
 Source tarball sha256 `44f69b92a807ce09f3dbf295520f16fb8498d8dd3da2945e6c6b1bdd3fe03d50` (the wire drop, 2026-10-16).

@@ -8,6 +8,11 @@
 
   Status (2026-10-15): Core definitions + key theorems. Signature scheme
   is axiomatized (like hmac_sha256); the logic of veto/expiry is proven.
+  Status (2026-10-19): no unfinished goals. 9 named axioms in this file
+  (the signature scheme), 10 repo-wide with `hmac_sha256`. Three theorems
+  below (`veto_kills_transferability`, `ghost_by_default`,
+  `expired_deniable`) have conclusion `True`: they record the argument in
+  prose and state no property.
 -/
 
 import Tapcore.Basic
@@ -139,7 +144,8 @@ theorem createReceipt_valid (cid : CeremonyId) (att : Vector Bool 256)
   rfl
 
 /-- Veto kills transferability: if either key is published, the receipt
-    cannot be used as transferable proof. [PROVEN]
+    cannot be used as transferable proof. [PLACEHOLDER: the Lean conclusion
+    is `True`; the argument below is prose, not a proof.]
     
     The argument: once `skA` is public, anyone can compute `sign skA msg`
     for any `msg`. A receipt with A's signature is indistinguishable from
@@ -158,7 +164,8 @@ theorem veto_kills_transferability (bb : BulletinBoard) (r : Receipt)
   trivial
 
 /-- Ghost by default: with no countersignatures, only the HMAC transcript
-    exists, which is deniable (proven in `deniable`). [PROVEN]
+    exists, which is deniable (see `deniable`). [PLACEHOLDER: the Lean
+    conclusion is `True`; states no property.]
     
     This is a meta-theorem: the absence of a `Receipt` means there is no
     transferable evidence. The HMAC transcript's deniability is `deniable`. -/
@@ -243,7 +250,8 @@ theorem publication_kills (bb : TimedBulletinBoard) (tr : TimedReceipt) (t : Tim
 
 /-- Expired implies deniable: an expired receipt cannot be used as transferable
     proof, because the keys are public (or the window closed, implying publication).
-    [PROVEN — the logic; the forgery construction uses the published key.] -/
+    [PLACEHOLDER: the Lean conclusion is `True`; states no property. The
+    forgery construction from the published key is not formalized.] -/
 theorem expired_deniable (bb : TimedBulletinBoard) (tr : TimedReceipt) (t : Time)
     (h : isExpiredAt bb tr t = true) :
     -- The receipt is deniable at time t: a forger can reproduce it.
