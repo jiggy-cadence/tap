@@ -8,7 +8,7 @@ Your agent can spend small amounts inside a daily allowance (a Squads v4 spendin
 
 **What's proven, what isn't** (every claim with its receipt: [PROOF.md](PROOF.md))
 - **Proven on Solana devnet, not mainnet:** the agent alone, over the limit, is refused on chain ([`2h859F33…`](evidence/README.md), `MissingRequiredSignature`); agent + phone co-sign lands ([`2ik5wVv3…`](evidence/README.md), 2 signatures). Saved RPC transaction data and screenshots, with sha256, are in [`evidence/`](evidence/).
-- **Tests:** `bash check.sh` prints `ALL GREEN (19 suites)` on a fresh clone, with no network and no keys. One suite, `evidence/evidence.test.js`, re-hashes the saved devnet evidence and checks it against PROOF.md offline.
+- **Tests:** `bash check.sh` prints `ALL GREEN (20 suites)` on a fresh clone, with no network and no keys. `evidence/evidence.test.js` re-hashes the saved devnet evidence and checks it against PROOF.md offline. `node evidence/refetch.js` tries a live re-fetch and reports MATCH, PRUNED, UNREACHABLE or a contradiction, never "verified" from a pruned node.
 - **Not proven yet:** a stone tap on real hardware. The magnet nonce and bump checks are simulated, and the on-chain proof is agent + phone, not stone + phone.
 
 Colosseum World's Fair 2026 submission. Built during the entry period (Sep 14 – Oct 12, 2026).

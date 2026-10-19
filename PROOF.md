@@ -17,6 +17,8 @@ The receipts are the saved RPC transaction data and screenshots in [`evidence/`]
 
 Offline check of the saved files: `node evidence/evidence.test.js` re-hashes every file in `evidence/` against its published sha256, re-reads slot, fee, blockTime, error and signature count from the saved JSON, recomputes the public digests, and checks them against the table above. On Oct 19, 2026: 10/10 pass. Each check has a canary (a flipped byte or a wrong value must fail it).
 
+Live re-fetch: `node evidence/refetch.js` (read-only: `getGenesisHash`, `minimumLedgerSlot`, `getTransaction`). For each transaction and node it reports MATCH, MISMATCH, NOT_FOUND (null inside the node's range), PRUNED (null below the node's `minimumLedgerSlot`), WRONG_CLUSTER or UNREACHABLE. It also reports NULL_NO_FLOOR, a null from a node that won't say which slots it keeps. It exits 0 only if every transaction matches on some devnet node, 1 on any contradiction, and 3 if the result is inconclusive. From my machine on Oct 19, 2026, every run exited 3. `api.devnet.solana.com` was UNREACHABLE every time. The OnFinality devnet node returned null for these transactions while reporting a lowest slot of 511144736–511149936 (PRUNED), and on later runs it rate-limited me (HTTP 429) or timed out (UNREACHABLE). Pass `--rpc <url>` for an archive devnet node; `--save <dir>` keeps the raw responses with timestamps.
+
 ## 2. Tests
 
 The repo has one gate: [`check.sh`](check.sh). It needs no network and no keys. Run it on commit [`5dcb29e15b34a89ab65cf5611f46c1ebec3356f6`](https://github.com/jiggy-cadence/tap/commit/5dcb29e15b34a89ab65cf5611f46c1ebec3356f6) and it prints `ALL GREEN (18 suites)`, plus a secret-print guard that passes.
@@ -34,7 +36,7 @@ The repo has one gate: [`check.sh`](check.sh). It needs no network and no keys. 
 
 To reproduce: `git clone https://github.com/jiggy-cadence/tap && cd tap && bash check.sh`
 
-Re-run Mon Oct 19, 2026 on `main` at `2641586` (only PROOF.md and README.md differ from `5dcb29e`): `ALL GREEN (18 suites)`, exit 0. `check.sh` does not print every count (vault prints only its last suite, and the receipt, seal and vowfield suites print none), so I ran those directly: vault 25+22+9+8+10+31+2+6 = 113, receipt 9, seal 18, vowfield 12. Totals match the table: 444. Later commits add one suite (`evidence/evidence.test.js`, 10 tests), so `check.sh` on current `main` prints `ALL GREEN (19 suites)`.
+Re-run Mon Oct 19, 2026 on `main` at `2641586` (only PROOF.md and README.md differ from `5dcb29e`): `ALL GREEN (18 suites)`, exit 0. `check.sh` does not print every count (vault prints only its last suite, and the receipt, seal and vowfield suites print none), so I ran those directly: vault 25+22+9+8+10+31+2+6 = 113, receipt 9, seal 18, vowfield 12. Totals match the table: 444. Later commits add two offline suites (`evidence/evidence.test.js`, 10 tests, and `evidence/refetch.test.js`, 11 tests), so `check.sh` on current `main` prints `ALL GREEN (20 suites)`.
 
 ## 3. honest-evals
 
