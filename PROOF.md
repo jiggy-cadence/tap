@@ -36,7 +36,7 @@ The repo has one gate: [`check.sh`](check.sh). It needs no network and no keys. 
 
 To reproduce: `git clone https://github.com/jiggy-cadence/tap && cd tap && bash check.sh`
 
-Re-run Mon Oct 19, 2026 on `main` at `2641586` (only PROOF.md and README.md differ from `5dcb29e`): `ALL GREEN (18 suites)`, exit 0. `check.sh` does not print every count (vault prints only its last suite, and the receipt, seal and vowfield suites print none), so I ran those directly: vault 25+22+9+8+10+31+2+6 = 113, receipt 9, seal 18, vowfield 12. Totals match the table: 444. Later commits add two offline suites (`evidence/evidence.test.js`, 10 tests, and `evidence/refetch.test.js`, 11 tests), so `check.sh` on current `main` prints `ALL GREEN (20 suites)`.
+Re-run Mon Oct 19, 2026 on `main` at `2641586` (only PROOF.md and README.md differ from `5dcb29e`): `ALL GREEN (18 suites)`, exit 0. Older `check.sh` under-reported (vault printed only its last suite's 6/6). As of the Oct 19 reporting fix, `check.sh` sums every suite: vault **113/113**, receipt 9, seal 18, vowfield 12. Totals match the table: 444. Later commits add two offline suites (`evidence/evidence.test.js`, 10 tests, and `evidence/refetch.test.js`, 11 tests), so `check.sh` on current `main` prints `ALL GREEN (20 suites)`.
 
 ## 3. honest-evals
 
@@ -71,10 +71,10 @@ The `gh search prs --repo TauCetiProject/TauCeti --author weiscadence --merged` 
 
 ## 5. Lean model of TAP
 
-Source: [`lean/` on branch `app-v2`](https://github.com/jiggy-cadence/tap/tree/app-v2/lean), README at commit [`f5da71b`](https://github.com/jiggy-cadence/tap/blob/f5da71b7c52f0ad1c16bf8c6a5ca526f29a4948d/lean/README.md). Compiled by Lodestone; source reviewed by Cadence and Aperture. Aperture also compiled it independently on Oct 19, 2026 at `app-v2` `a6ce29f` (`lean/` is unchanged through `f03a13c`): Lean v4.35.0, Mathlib v4.35.0 from the cache. `lake build Tapcore.Basic Tapcore.Probability Tapcore.DualReceipt` is green (3045 jobs). A plain `lake build` fails as shipped, because the lakefile's default target needs a `Main.lean` that isn't in the repo. The compiler's count of real `sorry`s is Basic 0, Probability 0, DualReceipt 1. `#print axioms` for `hammingBall_card` and `targetSet_card` gives only `propext`, `Classical.choice` and `Quot.sound`.
+Source: [`lean/`](lean/) on `main` (brought over from `app-v2` with the half-life fix). Toolchain Lean v4.35.0, Mathlib v4.35.0 (`56a00585…`). Compiled by Lodestone; source reviewed by Cadence and Aperture. Aperture closed the last unfinished goal on Mon Oct 19, 2026 (`app-v2` `bdcf3a6`): plain `lake build` prints `Build completed successfully (3047 jobs)`, exit 0, and `grep -rn sorry lean/` returns 0 hits. `#print axioms` for `hammingBall_card` and `targetSet_card` gives only `propext`, `Classical.choice` and `Quot.sound`.
 
-- **One unfinished lemma:** `half_life_monotone` (one `sorry`).
-- **Named axioms:** `hmac_sha256`, and the signature axioms (`sig_unforgeable`, `sig_correct` and the abstract key/sign/verify types). Freshness and binding rest on `hmac_sha256`.
+- **Unfinished goals: none.** `half_life_monotone` is proven from window-expiry monotonicity and `wasPublishedBy_mono` (real timed-bulletin-board lookup).
+- **Named axioms (10):** `hmac_sha256` (Basic.lean); `SigKey`, `VerKey`, `Sig`, `keygen`, `sign`, `verifySig`, `sig_unforgeable`, `sig_correct`, `decEqVerKey` (DualReceipt.lean). These are crypto/modelling assumptions (HMAC PRF + Ed25519 stand-in), not theorems. Full table in [`lean/README.md`](lean/README.md).
 - **Deniability is a placeholder statement,** not a proof: `deniable` holds by `rfl`, and three related theorems conclude only `True`.
 - The 529/2^32 counting bound is for the 32-bit target spec, not the deployed 16-bit build.
 
@@ -83,7 +83,6 @@ Source: [`lean/` on branch `app-v2`](https://github.com/jiggy-cadence/tap/tree/a
 - **Devnet only.** No mainnet funds, no real-money use.
 - **HMAC is assumed, not proven.** The Lean model takes `hmac_sha256` as an axiom.
 - **`sig_unforgeable` is an axiom, not a theorem.**
-- **One unfinished lemma** in the Lean model (`half_life_monotone`).
-- **The magnet nonce and the bump check are simulated.** They haven't been verified on hardware or on my real device yet (see [README](README.md) and [GAPS.md](GAPS.md)).
+- **The magnet nonce and the bump check are simulated (Stage 1).** Host-tested; not yet run on the stone or on a real device (see [README](README.md) and [GAPS.md](GAPS.md)). The on-chain proof is agent + phone, not stone + phone.
 - **Agents checking each other is not independent review.** My agents cross-check each other's work, but they share an operator and a setup. Nothing here has been reviewed by an outside party.
 - **Audits:** my audit work is unpaid practice on public contests.
