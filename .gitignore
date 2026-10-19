@@ -4,3 +4,6 @@ devnet-keys/
 vault/devnet-keys.json
 *devnet-keys*.json
 docs/demo-frames/
+
+# Lean build cache
+lean/.lake/

@@ -201,11 +201,20 @@ structure TimedReceipt where
     Each entry is (verification key, time it was published). -/
 abbrev TimedBulletinBoard := List (VerKey × Time)
 
-/-- Was this key published at or before time `t`? 
-    Placeholder: the real implementation needs the timed bulletin board
-    with DecidableEq. For now, the untimed `isPublished` is the real one. -/
+/-- Was this key published at or before time `t`?
+    True iff the timed bulletin board holds an entry `(vk, t_pub)` with `t_pub ≤ t`.
+    Uses `decEqVerKey` (axiomatized decidable equality on verification keys). -/
 noncomputable def wasPublishedBy (bb : TimedBulletinBoard) (vk : VerKey) (t : Time) : Bool :=
-  false
+  bb.any fun p => decide (p.1 = vk) && decide (p.2 ≤ t)
+
+/-- Publication is monotone in time: once published by `t`, still published at any later `t'`.
+    [PROVEN] from the definition of `wasPublishedBy`. -/
+theorem wasPublishedBy_mono (bb : TimedBulletinBoard) (vk : VerKey) (t t' : Time)
+    (hle : t ≤ t') (h : wasPublishedBy bb vk t = true) :
+    wasPublishedBy bb vk t' = true := by
+  simp only [wasPublishedBy, List.any_eq_true, Bool.and_eq_true, decide_eq_true_eq] at h ⊢
+  obtain ⟨p, hp, hv, ht⟩ := h
+  exact ⟨p, hp, hv, Nat.le_trans ht hle⟩
 
 /-- Is the receipt expired at time `t`?
     Expired iff: past the validity window, OR either key was published. -/
@@ -225,8 +234,7 @@ theorem expiry_after_window (bb : TimedBulletinBoard) (tr : TimedReceipt) (t : T
   unfold isExpiredAt
   simp [h]
 
-/-- Publication kills: if a key was published by time `t`, expired at `t`. [PROVEN]
-    (Uses the placeholder `wasPublishedBy`; the logic is: published → expired.) -/
+/-- Publication kills: if a key was published by time `t`, expired at `t`. [PROVEN] -/
 theorem publication_kills (bb : TimedBulletinBoard) (tr : TimedReceipt) (t : Time)
     (hA : wasPublishedBy bb tr.receipt.vkA t = true) :
     isExpiredAt bb tr t = true := by
@@ -246,9 +254,24 @@ theorem expired_deniable (bb : TimedBulletinBoard) (tr : TimedReceipt) (t : Time
 
 /-- The half-life property: transferability is monotonic decreasing in time.
     If a receipt is expired at `t`, it stays expired at any later `t'`.
-    Note: `wasPublishedBy` is a placeholder. The window-expiry part is proven
-    by omega; the publication part needs the real bulletin board. -/
+    Proven from window-expiry monotonicity (`Nat.lt_of_lt_of_le`) and
+    `wasPublishedBy_mono`. -/
 theorem half_life_monotone (bb : TimedBulletinBoard) (tr : TimedReceipt) (t t' : Time)
     (hle : t ≤ t') (h : isExpiredAt bb tr t = true) :
     isExpiredAt bb tr t' = true := by
-  sorry
+  unfold isExpiredAt at h ⊢
+  cases (Bool.or_eq_true_iff.mp h) with
+  | inl hw =>
+    have hw' : tr.createdAt + tr.validityWindow < t := of_decide_eq_true hw
+    have : tr.createdAt + tr.validityWindow < t' := Nat.lt_of_lt_of_le hw' hle
+    simp [this]
+  | inr hk =>
+    cases (Bool.or_eq_true_iff.mp hk) with
+    | inl ha =>
+      have : wasPublishedBy bb tr.receipt.vkA t' = true :=
+        wasPublishedBy_mono bb tr.receipt.vkA t t' hle ha
+      simp [this]
+    | inr hb =>
+      have : wasPublishedBy bb tr.receipt.vkB t' = true :=
+        wasPublishedBy_mono bb tr.receipt.vkB t t' hle hb
+      simp [this]

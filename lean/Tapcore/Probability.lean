@@ -25,10 +25,10 @@ import Mathlib.Data.Fintype.Powerset
   32-bit center has exactly 529 elements — C(32,0) + C(32,1) + C(32,2).
 
   Status (2026-10-14):
-  - hammingDist_eq_disagree_card: PROVEN (zero sorry)
-  - hammingBall_card: PROVEN (zero sorry) — the 529 is real
-  - acceptance_prob_cards: PROVEN (zero sorry) — 529/2^32 as card ratio
-  - acceptance_prob: PROVEN (zero sorry) — uniformOfFinset wrapper around acceptance_prob_cards
+  - hammingDist_eq_disagree_card: PROVEN
+  - hammingBall_card: PROVEN — the 529 is real
+  - acceptance_prob_cards: PROVEN — 529/2^32 as card ratio
+  - acceptance_prob: PROVEN — uniformOfFinset wrapper around acceptance_prob_cards
   - hmac_collision_resistant axiom: KILLED (was mathematically impossible)
 -/
 

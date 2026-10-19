@@ -11,7 +11,7 @@ import Mathlib.Data.Nat.Choose.Basic
     Standard assumptions; breaking them breaks the internet.
     These are the ONLY two axioms. Everything else is proven.
   - [PROVEN]: freshness, binding, Hamming geometry (incl. triangle inequality),
-    challenge/amount encoding injectivity — real proofs, zero sorry.
+    challenge/amount encoding injectivity — real proofs, no unfinished goals.
 -/
 
 -- A 256-bit session key (Step 0: QR pairing)
