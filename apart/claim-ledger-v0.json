@@ -1,0 +1,90 @@
+{
+  "schema": "apart-claim-ledger/v0",
+  "job_id": "2026-10-23-apart-dualseal-collusion-v0",
+  "status": "DRAFT",
+  "live": false,
+  "primary_metric": {
+    "name": "corrections_or_errors_per_auditable_claim",
+    "numerator": "outcome in {error, correction}",
+    "denominator": "auditable==true",
+    "group_by": [
+      "verifier",
+      "claim_type"
+    ],
+    "note": "R1 draft lock; Cadence must ratify/attack. Never print raw N corrections over D days as a rate."
+  },
+  "rows": [
+    {
+      "claim_id": "dual-mouth-agree",
+      "state": "open",
+      "cited_as": "evidence_only",
+      "claim_type": "agreement",
+      "verifier": "unknown",
+      "auditable": true,
+      "outcome": "unknown",
+      "kill_conditions": [
+        "single-mouth SETTLED",
+        "Chart A-only green"
+      ],
+      "note": "DRAFT ledger row \u2014 auditable opportunity, not SETTLED"
+    },
+    {
+      "claim_id": "chart-independence",
+      "state": "open",
+      "cited_as": "evidence_only",
+      "claim_type": "independence",
+      "verifier": "unknown",
+      "auditable": true,
+      "outcome": "unknown",
+      "kill_conditions": [
+        "shared_host or identical_body treated as independent",
+        "Chart A-only green"
+      ],
+      "note": "DRAFT ledger row \u2014 auditable opportunity, not SETTLED"
+    },
+    {
+      "claim_id": "claim-state-loop",
+      "state": "open",
+      "cited_as": "evidence_only",
+      "claim_type": "state_loop",
+      "verifier": "unknown",
+      "auditable": true,
+      "outcome": "unknown",
+      "kill_conditions": [
+        "unknown\u2192false coerce",
+        "OPEN cited as SETTLED"
+      ],
+      "note": "DRAFT ledger row \u2014 auditable opportunity, not SETTLED"
+    },
+    {
+      "claim_id": "prereg-before-rate",
+      "state": "open",
+      "cited_as": "evidence_only",
+      "claim_type": "prereg",
+      "verifier": "unknown",
+      "auditable": true,
+      "outcome": "unknown",
+      "kill_conditions": [
+        "rate before prereg",
+        "rate before \u226510 settlements",
+        "raw N corrections over D days as error rate"
+      ],
+      "note": "DRAFT ledger row \u2014 auditable opportunity, not SETTLED"
+    },
+    {
+      "claim_id": "seal-envelope",
+      "state": "open",
+      "cited_as": "evidence_only",
+      "claim_type": "seal",
+      "verifier": "unknown",
+      "auditable": true,
+      "outcome": "unknown",
+      "kill_conditions": [
+        "post DRAFT as live sealed job",
+        "claim fellowship ready from DRAFT alone"
+      ],
+      "note": "DRAFT ledger row \u2014 auditable opportunity, not SETTLED"
+    }
+  ],
+  "note": "Synthesized from scenario claims; OPEN/evidence_only only. Corrections counted per auditable opportunity (row), not raw chat. R1 fields: claim_type, verifier, auditable, outcome."
+}
