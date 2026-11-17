@@ -17,6 +17,11 @@ const a = await send({ kind: 'pay', to: 'Alice1111111111111111111111111111111111
 const b = await send({ kind: 'drain', to: 'Mallory1111111111111111111111111111111111', amountSol: 10 });
 // → { status: 'needs_tap', decoderLine: '… EVERYTHING …', approve, refuse }
 // await b.approve({ challengeHex });  // after phone taps the stone
+//
+// approve() checks the tap ONLY if you pass a verifier:
+//   guard(send, { policy, verifyTap: (attestation, tx) => myCheck(attestation, tx) })
+// With verifyTap, a tap that does not verify returns { status: 'refused', code: 'REFUSED_TAP_UNVERIFIED' }
+// and nothing is sent. Without it, approve() sends on any call and returns tapVerified: false.
 // await b.refuse('no tap — phone was not at the stone.');
 ```
 

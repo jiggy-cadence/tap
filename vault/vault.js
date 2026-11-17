@@ -87,6 +87,9 @@ function createVault({ secrets, policy, executors, verifyCeremony, now = () => D
     const pol = P[intent.kind] || {};
     if (pol.alwaysTap) return 'kind is always-tap';
     if (WALLET_KINDS.has(intent.kind) && !known[intent.kind].has(intent.to)) return 'new recipient';
+    // fail closed: a policy with no (or a non-numeric) allowance has NO allowance, so every send taps.
+    // `x > undefined` is false, which used to let known-recipient sends through unbounded.
+    if (!(typeof pol.allowance === 'number' && pol.allowance >= 0)) return 'no allowance configured';
     if (spentLast24h(intent.kind) + cost > pol.allowance) return 'over allowance';
     return null;
   }
@@ -144,7 +147,9 @@ function createVault({ secrets, policy, executors, verifyCeremony, now = () => D
     return run(p.intent, p.cost);               // the STORED intent, not anything the caller sends now
   }
 
-  const fmtUnits = (n, dec) => (n / 10 ** dec).toFixed(dec).replace(/0+$/, '').replace(/\.$/, '');
+  // trailing zeros are trimmed only AFTER a decimal point: with dec = 0 there is none, and trimming
+  // turned 5000000 into "5" on the line the human approves.
+  const fmtUnits = (n, dec) => { const s = (n / 10 ** dec).toFixed(dec); return s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s; };
   function describe(i, cost) {
     const trust = i.trust === true ? ' and TRUST this address for future allowance sends' : '';
     const isNew = k => known[k].has(i.to) ? '' : ' (NEW address)';

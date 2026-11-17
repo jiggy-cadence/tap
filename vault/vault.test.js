@@ -172,6 +172,33 @@ let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('PASS', 
     assert.equal(w.status().spent24h.spl_multisig_transfer, 5_000_000);
     assert.equal((await w.request({ kind: 'spl_multisig_transfer', to: 'Alice111', amount: 1_000_001 })).status, 'needs_ceremony'); // over allowance
   });
+  await t('approval line shows the whole amount when decimals is unset (panel 2026-11-17: 5000000 rendered as "5")', async () => {
+    const w = createVault({ secrets: {}, policy: { spl_multisig_transfer: { allowance: 0, knownRecipients: [] } },
+      executors: { spl_multisig_transfer: async () => ({ result: 1 }) }, verifyCeremony, now });
+    const show = async amount => (await w.agent.request({ kind: 'spl_multisig_transfer', to: 'Mallory', amount })).show;
+    assert.equal(await show(5_000_000), 'Send 5000000 tokens to Mallory (NEW address) (2-of-2 treasury)');
+    assert.equal(await show(100), 'Send 100 tokens to Mallory (NEW address) (2-of-2 treasury)');
+    assert.equal(await show(7), 'Send 7 tokens to Mallory (NEW address) (2-of-2 treasury)');
+    const d = createVault({ secrets: {}, policy: { spl_multisig_transfer: { allowance: 0, knownRecipients: [], decimals: 6, symbol: 'tUSD' }, sol_transfer: { allowance: 0, knownRecipients: [] } },
+      executors: { spl_multisig_transfer: async () => ({ result: 1 }), sol_transfer: async () => ({ result: 1 }) }, verifyCeremony, now });
+    assert.match((await d.agent.request({ kind: 'spl_multisig_transfer', to: 'Mallory', amount: 1_500_000 })).show, /^Send 1\.5 tUSD /);
+    assert.match((await d.agent.request({ kind: 'spl_multisig_transfer', to: 'Mallory', amount: 10_000_000 })).show, /^Send 10 tUSD /);
+    assert.match((await d.agent.request({ kind: 'sol_transfer', to: 'Mallory', lamports: 20_000_000_000 })).show, /^Send 20 SOL /);
+  });
+  await t('a policy with no allowance always taps, even for a known recipient (panel 2026-11-17: failed open)', async () => {
+    let ran = 0;
+    for (const allowance of [undefined, null, NaN, '100', -1]) {
+      const w = createVault({ secrets: {}, policy: { sol_transfer: { allowance, knownRecipients: ['Alice111'] } },
+        executors: { sol_transfer: async () => { ran++; return { result: 1 }; } }, verifyCeremony, now });
+      const r = await w.agent.request({ kind: 'sol_transfer', to: 'Alice111', lamports: 1 });
+      assert.equal(r.status, 'needs_ceremony', `allowance=${String(allowance)} must tap`); assert.match(r.why, /no allowance configured/);
+    }
+    assert.equal(ran, 0);
+    const ok = createVault({ secrets: {}, policy: { sol_transfer: { allowance: 10, knownRecipients: ['Alice111'] } },
+      executors: { sol_transfer: async () => { ran++; return { result: 1 }; } }, verifyCeremony, now });
+    assert.equal((await ok.agent.request({ kind: 'sol_transfer', to: 'Alice111', lamports: 1 })).status, 'done');
+    assert.equal(ran, 1);
+  });
   await t('lockout SURVIVES A RESTART (persisted lockStore), and no store = documented reset', async () => {
     let saved = null; const store = { load: () => saved && JSON.parse(saved), save: st => { saved = JSON.stringify(st); } };
     let a = mk(store);

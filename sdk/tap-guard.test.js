@@ -138,6 +138,60 @@ const rawSend = async (tx, ctx) => { sent.push({ tx, ctx }); return { ok: true, 
     assert.ok(BigInt(h[0].lamports) === 50_000_000n);
   });
 
+  await t('approve() with verifyTap: a bad attestation does not send, a good one does (panel 2026-11-17)', async () => {
+    sent.length = 0;
+    const seen = [];
+    const send = guard(rawSend, { policy, now: () => 1_000_000, verifyTap: (att, tx) => { seen.push(tx.to); return att.challengeHex === 'good'; } });
+    const r = await send({ kind: 'pay', to: MALLORY, amountSol: 0.05 });
+    assert.strictEqual(r.status, 'needs_tap');
+    const bad = await r.approve({ challengeHex: 'forged' });
+    assert.strictEqual(bad.status, 'refused');
+    assert.strictEqual(bad.code, 'REFUSED_TAP_UNVERIFIED');
+    assert.strictEqual(sent.length, 0, 'unverified tap must not send');
+    assert.ok(send.pending(), 'ticket stays pending after a failed verification');
+    const none = await r.approve();
+    assert.strictEqual(none.status, 'refused');
+    assert.strictEqual(sent.length, 0);
+    const ok = await r.approve({ challengeHex: 'good' });
+    assert.strictEqual(ok.status, 'sent');
+    assert.strictEqual(ok.tapVerified, true);
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(sent[0].ctx.tapVerified, true);
+    assert.deepStrictEqual(seen, [MALLORY, MALLORY, MALLORY]);
+    await assert.rejects(r.approve({ challengeHex: 'good' }), /REFUSED_NO_PENDING/);
+  });
+
+  await t('approve() with a throwing or truthy-but-not-true verifier does not send', async () => {
+    sent.length = 0;
+    for (const verifyTap of [() => { throw new Error('boom'); }, () => 'yes', async () => 1]) {
+      const send = guard(rawSend, { policy, now: () => 1_000_000, verifyTap });
+      const r = await send({ kind: 'pay', to: MALLORY, amountSol: 0.05 });
+      assert.strictEqual((await r.approve({})).code, 'REFUSED_TAP_UNVERIFIED');
+    }
+    assert.strictEqual(sent.length, 0);
+    assert.throws(() => guard(rawSend, { policy, verifyTap: 'nope' }), /verifyTap must be a function/);
+  });
+
+  await t('approve() without verifyTap still sends but says tapVerified: false', async () => {
+    sent.length = 0;
+    const send = guard(rawSend, { policy, now: () => 1_000_000 });
+    const r = await send({ kind: 'pay', to: MALLORY, amountSol: 0.05 });
+    const ok = await r.approve({ anything: 1 });
+    assert.strictEqual(ok.status, 'sent');
+    assert.strictEqual(ok.tapVerified, false);
+    assert.strictEqual(sent[0].ctx.tapVerified, false);
+  });
+
+  await t('numeric feeLamports is refused before any send, so it cannot skip the allowance history', async () => {
+    sent.length = 0;
+    const send = guard(rawSend, { policy, now: () => 1_000_000 });
+    const r = await send({ kind: 'pay', to: ALICE, amountSol: 0.05, feeLamports: 5000 });
+    assert.strictEqual(r.status, 'refused');
+    assert.strictEqual(r.code, 'REFUSE_BAD_FEE');
+    assert.strictEqual(sent.length, 0);
+    assert.strictEqual(send.getHistory().length, 0);
+  });
+
   await t('missing policy throws named', async () => {
     assert.throws(() => guard(rawSend, {}), /opts\.policy is required/);
   });

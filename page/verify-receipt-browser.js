@@ -22,15 +22,19 @@ function canon(v) {
   }
   throw new Error('canon: unsupported type ' + t);
 }
+const MIN_SIGNERS = 2;   // TAP treasuries are 2-of-2 (agent + phone)
 const MEMO = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', TOKEN = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 const RPC = { devnet: 'https://api.devnet.solana.com', 'mainnet-beta': 'https://api.mainnet-beta.solana.com' };
 async function sha256hex(str) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); return Array.from(new Uint8Array(d), b => b.toString(16).padStart(2, '0')).join(''); }
 async function tapMemo(intent) { const { requireMemo, ...rest } = intent; return 'TAP1:' + await sha256hex('TAP1|' + canon(rest)); }
-// Rebuild from a getTransaction(json) result. Mirrors verify-receipt.js: static keys only, exactly 1 memo + 1 token ix.
+// Rebuild from a getTransaction(json) result. Mirrors verify-receipt.js: static keys + lookup-table addresses,
+// exactly 1 memo + 1 token ix, and at least MIN_SIGNERS distinct multisig co-signers that actually signed.
 async function verifyResult(res) {
   if (!res) return { ok: false, why: 'tx not found' };
   if (res.meta && res.meta.err) return { ok: false, why: 'tx did not succeed: ' + JSON.stringify(res.meta.err) };
-  const m = res.transaction.message, keys = m.accountKeys, nsig = m.header.numRequiredSignatures;
+  const m = res.transaction.message, la = (res.meta && res.meta.loadedAddresses) || {}, nsig = m.header.numRequiredSignatures;
+  const keys = [...m.accountKeys, ...(la.writable || []), ...(la.readonly || [])];
+  for (const ix of m.instructions) for (const i of [ix.programIdIndex, ...ix.accounts]) if (keys[i] === undefined) return { ok: false, why: `account index ${i} is outside the ${keys.length} keys of this tx` };
   const ixs = m.instructions.map(ix => ({ program: keys[ix.programIdIndex], accts: ix.accounts.map(i => keys[i]), signer: ix.accounts.map(i => i < nsig), data: b58decode(ix.data) }));
   const memos = ixs.filter(i => i.program === MEMO), xfers = ixs.filter(i => i.program === TOKEN);
   if (memos.length !== 1 || xfers.length !== 1) return { ok: false, why: `expected 1 memo + 1 token transfer, got ${memos.length} + ${xfers.length}` };
@@ -38,7 +42,11 @@ async function verifyResult(res) {
   let amt = 0n; for (let i = 8; i >= 1; i--) amt = (amt << 8n) | BigInt(d[i]);
   const intent = { feePayer: keys[0], source: x.accts[0], mint: x.accts[1], destination: x.accts[2], multisig: x.accts[3], amount: amt.toString(), decimals: d[9] };
   const onchain = new TextDecoder().decode(memos[0].data), recomputed = await tapMemo(intent);
-  return { ok: onchain === recomputed, why: onchain === recomputed ? 'receipt verified' : 'RECEIPT DOES NOT MATCH what executed', intent, onchain, recomputed,
+  const cos = x.accts.slice(4), signed = new Set(cos.filter((_, j) => x.signer[4 + j]));
+  const why = signed.size !== cos.length ? 'a listed multisig co-signer did not sign (or is listed twice)'
+    : signed.size < MIN_SIGNERS ? `expected at least ${MIN_SIGNERS} multisig co-signers, got ${signed.size} (not a TAP co-signed transfer)`
+    : onchain !== recomputed ? 'RECEIPT DOES NOT MATCH what executed' : null;
+  return { ok: !why, why: why || 'receipt verified', intent, onchain, recomputed,
     receiptHex: /^TAP1:[0-9a-f]{64}$/.test(onchain) ? onchain.slice(5) : null, cosigners: x.accts.slice(4), slot: res.slot, blockTime: res.blockTime, fee: res.meta.fee,
     sig: res.transaction.signatures[0], scope: 'Proves the co-signers signed THIS intent. Human presence at the stone is the ceremony\'s claim, not the memo\'s.' };
 }

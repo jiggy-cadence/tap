@@ -11,6 +11,7 @@ const R = {
   BAD_INTENT:                    ['Payment incomplete', 'The payment is missing a detail (amount, recipient or account), so it was not saved.'],
   BAD_TAP:                       ['Tap not recognized', 'The tap did not carry a valid approval. Try again.'],
   REFUSED_NO_TAP:                ['No tap, no payment', 'This payment is over your limit and nobody tapped the stone for it.'],
+  REFUSED_TAP_UNVERIFIED:        ['Tap did not check out', 'The tap that came back could not be verified for this payment, so nothing was sent. Tap the stone again.'],
   REFUSED_NO_TAP_ID:             ['Old approval', 'This approval was saved by an older version and cannot be used safely. Tap again.'],
   REFUSED_REPLAY:                ['Tap already used', 'Each tap approves one payment, once. Someone tried to use this tap a second time.'],
   REFUSED_AGENT_INTENT:          ['Agent tried to set the terms', 'Only what you approved on this phone counts. The agent tried to supply its own version, so it was refused.'],

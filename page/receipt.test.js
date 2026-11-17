@@ -24,5 +24,16 @@ const otherSig = '2ik5wVv3cviq4uhdvVht3NJkguqY5d1MgvbAdicEuR99a6t9C8vYZ6okjjEBnT
     const ix = res.transaction.message.instructions.find(i => i.data.length < 20), d = R.b58decode(ix.data); d[1] ^= 1;
     const B = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'; let x = 0n; for (const b of d) x = x * 256n + BigInt(b); let s = ''; while (x > 0n) { s = B[Number(x % 58n)] + s; x /= 58n; } for (const b of d) { if (b) break; s = '1' + s; }
     ix.data = s; const r = await R.verifyResult(res); assert(!r.ok); assert.match(r.why || '', /RECEIPT DOES NOT MATCH|not TransferChecked|expected 1 memo/); });
+  await t('browser verifier refuses a transfer with fewer than 2 co-signers, or one that did not sign (panel 2026-11-17)', async () => { const fresh = () => JSON.parse(JSON.stringify(require('../evidence/rJRY77eU.json').result));
+    const a = fresh(), ix = a.transaction.message.instructions.find(i => i.data.length < 20); ix.accounts.pop();
+    let r = await R.verifyResult(a); assert(!r.ok); assert.match(r.why, /at least 2 multisig co-signers, got 1/);
+    const b = fresh(); b.transaction.message.header.numRequiredSignatures = 1;
+    r = await R.verifyResult(b); assert(!r.ok); assert.match(r.why, /did not sign/); });
+  await t('browser verifier resolves lookup-table addresses, and names an out-of-range index', async () => { const res = JSON.parse(JSON.stringify(require('../evidence/rJRY77eU.json').result));
+    const m = res.transaction.message, last = m.accountKeys.length - 1, moved = m.accountKeys.pop();
+    assert(m.instructions.some(i => i.programIdIndex === last || i.accounts.includes(last)), 'the moved key must be in use');
+    let r = await R.verifyResult(res); assert(!r.ok); assert.match(r.why, /outside the \d+ keys/);
+    res.meta.loadedAddresses = { writable: [], readonly: [moved] };
+    r = await R.verifyResult(res); assert(r.ok, r.why); assert.strictEqual(r.onchain, hero.receipt); });
   console.log(n + ' receipt tests pass');
 })().catch(e => { console.error(e); process.exit(1); });
