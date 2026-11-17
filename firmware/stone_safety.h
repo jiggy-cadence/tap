@@ -25,6 +25,20 @@ static inline int key_is_weak(const uint8_t *k, size_t n) {
   for (size_t i = 1; i < n; i++) if (k[i] != k[0]) return 0;
   return 1; /* all bytes equal: all-zero, all-0xFF, ... */
 }
+/* 1b) key_is_demo(): the published demo key 01..20 (also in expo App.js). Anyone can read it,
+ * so ceremonies refuse it unless the build opts in with -DTAP_ALLOW_DEMO_KEY (bench/film only). */
+static inline int key_is_demo(const uint8_t *k, size_t n) {
+  if (n != 32) return 0;
+  for (size_t i = 0; i < 32; i++) if (k[i] != (uint8_t)(i + 1)) return 0;
+  return 1;
+}
+static inline int key_refused(const uint8_t *k, size_t n) {
+#ifdef TAP_ALLOW_DEMO_KEY
+  return key_is_weak(k, n);
+#else
+  return key_is_weak(k, n) || key_is_demo(k, n);
+#endif
+}
 typedef struct { uint32_t heat_ms; uint32_t last_ms; uint32_t frac; } therm_t;
 static inline void therm_init(therm_t *t, uint32_t now) { t->heat_ms = 0; t->last_ms = now; t->frac = 0; }
 static inline void therm_cool(therm_t *t, uint32_t now) {

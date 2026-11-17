@@ -21,7 +21,7 @@ where `sig64` is the 64-byte ed25519 signature (base58-decoded tx signature).
 | Short | Role | On-chain | Slot | blockTime (UTC) | Fee (lamports) | Public digest |
 |-------|------|----------|------|-----------------|----------------|---------------|
 | `2h859F33` | Agent alone | Failed — `MissingRequiredSignature` | 509637420 | 2026-10-10 18:54:44 UTC | 5000 | `0c4cfe7fadb259786a09ac5662d3ed59c42684d925ca52b9bfaa27921e21dc00` |
-| `2ik5wVv3` | Agent + phone (post-tap) | Success | 509637436 | 2026-10-10 18:54:48 UTC | 10000 | `73f8fb66c1eba37fdb92d41519ad642eef1680cdee4419771e4b1b73dd64be82` |
+| `2ik5wVv3` | Agent + phone co-sign (scripted devnet run; no physical stone tap) | Success | 509637436 | 2026-10-10 18:54:48 UTC | 10000 | `73f8fb66c1eba37fdb92d41519ad642eef1680cdee4419771e4b1b73dd64be82` |
 
 ## Checksums (SHA-256 of file bytes)
 

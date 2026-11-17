@@ -91,8 +91,8 @@ bool looping = false;   // default OFF at boot: type `loop` deliberately (bench 
 // DEMO session key, hardcoded (my 18:12Z call): 32 bytes [1..32], matches
 // expo-ceremony App.js DEMO_KEY. An all-zeros boot key that never errors is
 // silent theater — this one is at least a KNOWN demo key, printed on every
-// ceremony. Rotate per Fair run via `key <64hex>`; keySet gates nothing
-// because the key is demo-grade by design.
+// ceremony. Since 2026-11-17 key_refused() rejects it unless built with
+// -DTAP_ALLOW_DEMO_KEY, so a stock flash cannot run a ceremony on a public key.
 uint8_t sessionKey[32] = {
   0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,
   0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,0x20
@@ -170,7 +170,7 @@ static void sendBit(int bit, unsigned long &t) {
 }
 
 static void ceremony(const uint8_t challenge[32]) {
-  if (key_is_weak(sessionKey, 32)) { Serial.println(F("REFUSED: weak session key, set one with key <64hex>")); return; }
+  if (key_refused(sessionKey, 32)) { Serial.println(F("REFUSED: weak or public demo session key, set one with key <64hex>")); return; }
   coilHot = false;
   uint8_t msg[35];
   msg[0] = 'm'; msg[1] = 'a'; msg[2] = 'g';
@@ -330,7 +330,7 @@ static void pulsePattern(uint16_t bits) {
 }
 
 static void stoneSign(const uint8_t *req) {   // req = 97 bytes
-  if (key_is_weak(sessionKey, 32)) { Serial.println(F("REFUSED: weak session key (pattern needs K_pair)")); return; }
+  if (key_refused(sessionKey, 32)) { Serial.println(F("REFUSED: weak or public demo session key (pattern needs K_pair)")); return; }
   int touch = waitForTouch();
   if (touch < 0) { Serial.println(F("REFUSED TOUCH_HELD: let go of the pad/BOOT, send again, touch after TOUCH")); return; }
   uint8_t sig[STONE_SIG_LEN], msg[STONE_MSG_LEN]; uint64_t ctr = 0;
@@ -377,7 +377,7 @@ static void handleCommand(String cmd) {
       uint8_t nk[32];
       if (!parseHex(cmd.substring(4), nk, 32)) {
         Serial.println(F("ERR: need 64 hex chars"));
-      } else if (key_is_weak(nk, 32)) {
+      } else if (key_refused(nk, 32)) {
         Serial.println(F("REFUSED: weak key (all bytes equal), key unchanged"));
       } else {
         memcpy(sessionKey, nk, 32);
@@ -431,7 +431,7 @@ void setup() {
   stoneInit();
   touchInit();   // hands off the pad for ~0.7 s after reset
   if (key_is_weak(sessionKey, 32)) Serial.println(F("WARN: boot key is weak; ceremonies refused until `key <64hex>`"));
-  else if (sessionKey[0] == 0x01 && sessionKey[31] == 0x20) Serial.println(F("NOTE: DEMO key 01..20 loaded; rotate with `key <64hex>` per Fair run"));
+  else if (key_is_demo(sessionKey, 32)) Serial.println(F("NOTE: public DEMO key 01..20 loaded; ceremonies refused unless built with TAP_ALLOW_DEMO_KEY. Set `key <64hex>`"));
   Serial.println(F("blink | loop | key <64hex> | chal <64hex> | fire <ms> | kicks [dec] | rate <ms> | spub | ssign <194hex> | help"));
 }
 

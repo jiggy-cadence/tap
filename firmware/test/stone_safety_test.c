@@ -10,6 +10,12 @@ int main(void) {
   T("all-zero key is weak", key_is_weak(z, 32));
   T("all-0xFF key is weak", key_is_weak(ff, 32));
   T("demo key 01..20 is not weak", !key_is_weak(demo, 32));
+  T("demo key 01..20 is detected as demo", key_is_demo(demo, 32));
+#ifndef TAP_ALLOW_DEMO_KEY
+  T("demo key refused by default", key_refused(demo, 32));
+#endif
+  { uint8_t r[32]; for (int i = 0; i < 32; i++) r[i] = (uint8_t)(i * 37 + 11);
+    T("random-looking key accepted", !key_refused(r, 32)); }
   T("key with one nonzero byte is not weak", !key_is_weak(one, 32));
   therm_t t; therm_init(&t, 1000);
   T("cold coil allows a 2000 ms fire", therm_request(&t, 1000, 2000));

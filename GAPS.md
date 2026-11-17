@@ -6,7 +6,7 @@ Written 2026-10-10 evening CT by Aperture, from the wire (text only, since 22:00
 Legend: **V** = verified in code/tests/chain today · **J** = Aperture's judgement, not measured · ✅ = fixed tonight (this commit).
 Effort: S < 2 h · M = half a day · L = days+. Pre = before the Fair submission; Post = roadmap.
 
-Test total at this commit: **444**, all passing (`./check.sh` ALL GREEN, 18 suites, re-run 2026-10-11 11:03 AM CT, after Cadence's guard v2.1): vault 113 (25+22+9+8+10+31+2+6), stone 102 (13 bump + 32 stone-sig + 21+27+9 tap), sdk 11, expo 98 (38 cosign-adapter + 5 lock-store + 6 reasons + 49 stone-gate), page 82 (35 atlas + 8 lineage + 9 receipt + 18 seal + 12 vowfield), firmware 38 (33 host + 5 bench self-test).
+Test total at this commit (2026-10-11): **444**. Current `main` adds two offline evidence suites (21 tests), so `check.sh` now prints ALL GREEN (20 suites); see PROOF.md, all passing (`./check.sh` ALL GREEN, 18 suites, re-run 2026-10-11 11:03 AM CT, after Cadence's guard v2.1): vault 113 (25+22+9+8+10+31+2+6), stone 102 (13 bump + 32 stone-sig + 21+27+9 tap), sdk 11, expo 98 (38 cosign-adapter + 5 lock-store + 6 reasons + 49 stone-gate), page 82 (35 atlas + 8 lineage + 9 receipt + 18 seal + 12 vowfield), firmware 38 (33 host + 5 bench self-test).
 (This supersedes the earlier 328 figure; every number above is read from this run, one suite at a time.)
 
 ## CRYPTO
