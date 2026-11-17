@@ -23,7 +23,12 @@ function txLamports(tx) {
   if (typeof amt !== 'number' || !Number.isFinite(amt) || amt < 0) return null;
   return solToLamports(amt);
 }
-const feeOf = tx => (tx.feeLamports === undefined ? DEFAULT_FEE : (/^(0|[1-9][0-9]*)$/.test(String(tx.feeLamports)) && typeof tx.feeLamports !== 'number' ? BigInt(tx.feeLamports) : null));
+const feeOf = tx => {
+  if (tx.feeLamports === undefined) return DEFAULT_FEE;
+  // Numbers are exact only as safe non-negative integers; floats, NaN, negatives and >2^53 stay refused.
+  if (typeof tx.feeLamports === 'number') return Number.isSafeInteger(tx.feeLamports) && tx.feeLamports >= 0 ? BigInt(tx.feeLamports) : null;
+  return /^(0|[1-9][0-9]*)$/.test(String(tx.feeLamports)) ? BigInt(tx.feeLamports) : null;
+};
 // spent: number (legacy: SOL already spent in window, caller computed) OR history array
 // [{ at: ms, lamports: string|bigint, feeLamports? }] of AUTO-approved spends.
 function spentInWindow(history, nowMs) {
@@ -37,7 +42,7 @@ function evaluate(policy, tx, spent = 0, nowMs = Date.now()) {
   const amt = txLamports(tx);
   if (amt === null) return { verdict: 'REFUSE', code: 'REFUSE_BAD_AMOUNT', reason: 'amount is not a valid number (lamports must be an integer string)' };
   const fee = feeOf(tx);
-  if (fee === null) return { verdict: 'REFUSE', code: 'REFUSE_BAD_FEE', reason: 'fee must be an integer string of lamports' };
+  if (fee === null) return { verdict: 'REFUSE', code: 'REFUSE_BAD_FEE', reason: 'fee must be a non-negative integer of lamports' };
   if ((policy.alwaysTap || []).includes(tx.kind)) return { verdict: 'TAP', code: 'TAP_ALWAYS', reason: `"${tx.kind}" always needs a tap` };
   if (!(policy.allowedRecipients || {})[tx.to]) return { verdict: 'TAP', code: 'TAP_RECIPIENT', reason: 'recipient is not on your list' };
   const perTx = solToLamports(policy.perTxAutoMaxSol), daily = solToLamports(policy.dailyAllowanceSol);

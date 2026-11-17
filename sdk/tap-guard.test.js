@@ -182,15 +182,26 @@ const rawSend = async (tx, ctx) => { sent.push({ tx, ctx }); return { ok: true, 
     assert.strictEqual(sent[0].ctx.tapVerified, false);
   });
 
-  await t('numeric feeLamports is refused before any send, so it cannot skip the allowance history', async () => {
+  await t('integer numeric feeLamports is accepted and booked exactly in the allowance history', async () => {
     sent.length = 0;
     const send = guard(rawSend, { policy, now: () => 1_000_000 });
     const r = await send({ kind: 'pay', to: ALICE, amountSol: 0.05, feeLamports: 5000 });
-    assert.strictEqual(r.status, 'refused');
-    assert.strictEqual(r.code, 'REFUSE_BAD_FEE');
-    assert.strictEqual(sent.length, 0);
-    assert.strictEqual(send.getHistory().length, 0);
+    assert.strictEqual(r.status, 'sent');
+    assert.strictEqual(send.getHistory().length, 1);
+    assert.strictEqual(String(send.getHistory()[0].feeLamports), '5000');
   });
+
+  for (const bad of [5000.5, -1, NaN, Infinity, 2 ** 60]) {
+    await t(`non-integer/unsafe numeric feeLamports ${String(bad)} is refused before any send`, async () => {
+      sent.length = 0;
+      const send = guard(rawSend, { policy, now: () => 1_000_000 });
+      const r = await send({ kind: 'pay', to: ALICE, amountSol: 0.05, feeLamports: bad });
+      assert.strictEqual(r.status, 'refused');
+      assert.strictEqual(r.code, 'REFUSE_BAD_FEE');
+      assert.strictEqual(sent.length, 0);
+      assert.strictEqual(send.getHistory().length, 0);
+    });
+  }
 
   await t('missing policy throws named', async () => {
     assert.throws(() => guard(rawSend, {}), /opts\.policy is required/);

@@ -34,7 +34,11 @@ function lamportsOf(tx) {
 
 function feeOf(tx) {
   if (tx.feeLamports === undefined) return DEFAULT_FEE;
-  if (typeof tx.feeLamports === 'number') return null;
+  // A JS number is exact only for safe non-negative integers; floats, NaN, negatives and
+  // values past 2^53 stay refused (null) rather than being rounded into the allowance history.
+  if (typeof tx.feeLamports === 'number') {
+    return Number.isSafeInteger(tx.feeLamports) && tx.feeLamports >= 0 ? BigInt(tx.feeLamports) : null;
+  }
   if (/^(0|[1-9][0-9]*)$/.test(String(tx.feeLamports))) return BigInt(tx.feeLamports);
   return null;
 }
